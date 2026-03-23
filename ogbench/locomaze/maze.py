@@ -51,7 +51,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             """Initialize the maze environment.
 
             Args:
-                maze_type: Maze type. One of 'arena', 'medium', 'large', 'giant', or 'teleport'.
+                maze_type: Maze type. One of 'arena', 'medium', 'large', 'giant', 'teleport',
+                    'windingcorridor', or 'multipath'.
                 maze_unit: Size of a maze unit block.
                 maze_height: Height of the maze walls.
                 terminate_at_goal: Whether to terminate the episode when the goal is reached.
@@ -158,6 +159,34 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 ]
                 self._teleport_info['teleport_out_xys'] = [
                     self.ij_to_xy(ij) for ij in self._teleport_info['teleport_out_ijs']
+                ]
+            elif self._maze_type == 'multipath':
+                # Three winding routes (top/middle/bottom) connect the same start/goal regions.
+                maze_map = [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
+                    [1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                ]
+            elif self._maze_type in ('windingcorridor', 'longpath'):
+                # A single winding corridor (serpentine path) with no branches.
+                maze_map = [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                 ]
             else:
                 raise ValueError(f'Unknown maze type: {self._maze_type}')
@@ -343,6 +372,22 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     [(7, 1), (7, 10)],
                     [(5, 6), (7, 1)],
                 ]
+            elif self._maze_type == 'multipath':
+                tasks = [
+                    [(5, 1), (5, 13)],
+                    [(1, 1), (5, 13)],
+                    [(9, 1), (5, 13)],
+                    [(5, 1), (1, 12)],
+                    [(5, 1), (9, 12)],
+                ]
+            elif self._maze_type in ('windingcorridor', 'longpath'):
+                tasks = [
+                    [(1, 1), (7, 1)],
+                    [(7, 1), (1, 1)],
+                    [(1, 4), (7, 12)],
+                    [(3, 10), (7, 3)],
+                    [(5, 3), (1, 15)],
+                ]
             else:
                 raise ValueError(f'Unknown maze type: {self._maze_type}')
 
@@ -466,6 +511,10 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             return ob, reward, terminated, truncated, info
 
         def render(self):
+            if self.render_mode == 'human':
+                # Delegate to the parent MuJoCo env renderer so a window is shown.
+                return super().render()
+
             if self.custom_renderer is None:
                 self.initialize_renderer()
             self.custom_renderer.update_scene(self.data, camera=self.custom_camera)
