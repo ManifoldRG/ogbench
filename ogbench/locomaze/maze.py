@@ -40,6 +40,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
         def __init__(
             self,
             maze_type='large',
+            maze_map=None,
+            custom_tasks=None,
             maze_unit=4.0,
             maze_height=0.5,
             terminate_at_goal=True,
@@ -55,7 +57,12 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
 
             Args:
                 maze_type: Maze type. One of 'arena', 'medium', 'large', 'giant', 'teleport',
-                    'windingcorridor', or 'multipath'.
+                    'windingcorridor', 'multipath', or 'custom'.
+                maze_map: Optional custom maze map with shape (H, W), where 0 is free and 1 is wall.
+                    If provided, this overrides built-in maze layouts.
+                custom_tasks: Optional list of tasks for custom mazes in the format
+                    [[(init_i, init_j), (goal_i, goal_j)], ...]. If omitted for a custom maze,
+                    one default task is created from the first and last free cells.
                 maze_unit: Size of a maze unit block.
                 maze_height: Height of the maze walls.
                 terminate_at_goal: Whether to terminate the episode when the goal is reached.
@@ -71,6 +78,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 **kwargs: Additional keyword arguments to pass to the parent locomotion environment.
             """
             self._maze_type = maze_type
+            self._custom_tasks = custom_tasks
             self._maze_unit = maze_unit
             self._maze_height = maze_height
             self._terminate_at_goal = terminate_at_goal
@@ -91,8 +99,19 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
 
             # Define maze map.
             self._teleport_info = None
-            if self._maze_type == 'arena':
-                maze_map = [
+            custom_maze_map = maze_map
+            maze_map_data = None
+            if custom_maze_map is not None:
+                maze_map_data = np.asarray(custom_maze_map)
+                if maze_map_data.ndim != 2:
+                    raise ValueError(f'Custom maze_map must be 2D, got shape {maze_map_data.shape}.')
+                if not np.all((maze_map_data == 0) | (maze_map_data == 1)):
+                    raise ValueError('Custom maze_map must contain only 0 (free) and 1 (wall).')
+                if self._maze_type != 'custom':
+                    # A custom map was explicitly provided; mark as custom layout for task handling.
+                    self._maze_type = 'custom'
+            elif self._maze_type == 'arena':
+                maze_map_data = [
                     [1, 1, 1, 1, 1, 1, 1, 1],
                     [1, 0, 0, 0, 0, 0, 0, 1],
                     [1, 0, 0, 0, 0, 0, 0, 1],
@@ -103,7 +122,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     [1, 1, 1, 1, 1, 1, 1, 1],
                 ]
             elif self._maze_type == 'medium':
-                maze_map = [
+                maze_map_data = [
                     [1, 1, 1, 1, 1, 1, 1, 1],
                     [1, 0, 0, 1, 1, 0, 0, 1],
                     [1, 0, 0, 1, 0, 0, 0, 1],
@@ -114,7 +133,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     [1, 1, 1, 1, 1, 1, 1, 1],
                 ]
             elif self._maze_type == 'large':
-                maze_map = [
+                maze_map_data = [
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                     [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
                     [1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
@@ -126,7 +145,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                 ]
             elif self._maze_type == 'giant':
-                maze_map = [
+                maze_map_data = [
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                     [1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1],
                     [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1],
@@ -141,7 +160,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                 ]
             elif self._maze_type == 'teleport':
-                maze_map = [
+                maze_map_data = [
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                     [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1],
                     [1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1],
@@ -165,7 +184,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 ]
             elif self._maze_type == 'multipath':
                 # Three winding routes (top/middle/bottom) connect the same start/goal regions.
-                maze_map = [
+                maze_map_data = [
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
                     [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
@@ -180,7 +199,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 ]
             elif self._maze_type in ('windingcorridor', 'longpath'):
                 # A single winding corridor (serpentine path) with no branches.
-                maze_map = [
+                maze_map_data = [
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
@@ -194,7 +213,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             else:
                 raise ValueError(f'Unknown maze type: {self._maze_type}')
 
-            self.maze_map = np.array(maze_map)
+            self.maze_map = np.array(maze_map_data, dtype=np.int8)
 
             # Update XML file.
             xml_file = self.xml_file
@@ -209,9 +228,10 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             if self.camera_id is None and self.camera_name is None:
                 # Use a custom default view.
                 camera = mujoco.MjvCamera()
-                camera.lookat[0] = 2 * (self.maze_map.shape[1] - 3)
-                camera.lookat[1] = 2 * (self.maze_map.shape[0] - 3)
-                camera.distance = 5 * (self.maze_map.shape[1] - 2)
+                maze_h, maze_w = self.maze_map.shape
+                camera.lookat[0] = 0.5 * self._maze_unit * (maze_w - 1) - self._offset_x
+                camera.lookat[1] = 0.5 * self._maze_unit * (maze_h - 1) - self._offset_y
+                camera.distance = 1.25 * self._maze_unit * max(maze_w - 2, maze_h - 2)
                 camera.elevation = -90
                 self.custom_camera = camera
             else:
@@ -271,8 +291,11 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                         )
 
             # Adjust floor size.
-            center_x, center_y = 2 * (self.maze_map.shape[1] - 3), 2 * (self.maze_map.shape[0] - 3)
-            size_x, size_y = 2 * self.maze_map.shape[1], 2 * self.maze_map.shape[0]
+            maze_h, maze_w = self.maze_map.shape
+            center_x = 0.5 * self._maze_unit * (maze_w - 1) - self._offset_x
+            center_y = 0.5 * self._maze_unit * (maze_h - 1) - self._offset_y
+            size_x = 0.5 * self._maze_unit * maze_w
+            size_y = 0.5 * self._maze_unit * maze_h
             floor = tree.find('.//geom[@name="floor"]')
             floor.set('pos', f'{center_x} {center_y} 0')
             floor.set('size', f'{size_x} {size_y} 0.2')
@@ -391,6 +414,16 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     [(3, 10), (7, 3)],
                     [(5, 3), (1, 15)],
                 ]
+            elif self._maze_type == 'custom':
+                if self._custom_tasks is not None:
+                    tasks = self._custom_tasks
+                else:
+                    free_ijs = np.argwhere(self.maze_map == 0)
+                    if len(free_ijs) < 2:
+                        raise ValueError('Custom maze must have at least two free cells to define a task.')
+                    init_ij = tuple(int(v) for v in free_ijs[0])
+                    goal_ij = tuple(int(v) for v in free_ijs[-1])
+                    tasks = [[init_ij, goal_ij]]
             else:
                 raise ValueError(f'Unknown maze type: {self._maze_type}')
 
@@ -452,6 +485,13 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             if self._add_noise_to_goal:
                 goal_xy = self.add_noise(goal_xy)
 
+            # Ensure positions are valid free-space cells for point-based agents.
+            if loco_env_type in ('point', 'pointy'):
+                if not self._is_xy_in_free_cell(init_xy):
+                    init_xy = self.ij_to_xy(self.cur_task_info['init_ij'])
+                if not self._is_xy_in_free_cell(goal_xy):
+                    goal_xy = self.ij_to_xy(self.cur_task_info['goal_ij'])
+
             # First, force set the position to the goal position to obtain the goal observation.
             super().reset(*args, **kwargs)
 
@@ -482,7 +522,16 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             if self._success_timing == 'pre':
                 success = self.compute_success()
 
+            prev_xy = self.get_xy().copy() if loco_env_type in ('point', 'pointy') else None
+
             ob, reward, terminated, truncated, info = super().step(action)
+
+            # Keep point-based agents from crossing walls or leaving the maze bounds.
+            if loco_env_type in ('point', 'pointy'):
+                cur_xy = self.get_xy().copy()
+                if not self._is_xy_in_free_cell(cur_xy):
+                    self.set_xy(prev_xy)
+                    ob = self.get_ob()
 
             if self._success_timing == 'post':
                 success = self.compute_success()
@@ -617,6 +666,12 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             random_x = np.random.uniform(low=-self._noise, high=self._noise) * self._maze_unit / 4
             random_y = np.random.uniform(low=-self._noise, high=self._noise) * self._maze_unit / 4
             return xy[0] + random_x, xy[1] + random_y
+
+        def _is_xy_in_free_cell(self, xy):
+            i, j = self.xy_to_ij(xy)
+            if i < 0 or i >= self.maze_map.shape[0] or j < 0 or j >= self.maze_map.shape[1]:
+                return False
+            return self.maze_map[i, j] == 0
 
     class BallEnv(MazeEnv):
         def update_tree(self, tree):

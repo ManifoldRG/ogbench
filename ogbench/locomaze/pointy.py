@@ -128,3 +128,4 @@ class PointyEnv(MujocoEnv, utils.EzPickle):
         qvel = self.data.qvel.copy()
         qpos[:] = xy
         self.set_state(qpos, qvel)
+        self._update_marker_pose()
