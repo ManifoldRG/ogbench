@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import ogbench
 
 # Make an environment and datasets (they will be automatically downloaded).
-dataset_name = 'pointmaze-multipath-navigate-v0'  # The dataset name specifies the environment and dataset type.
+dataset_name = 'pointymaze-multipath-navigate-v0'  # The dataset name specifies the environment and dataset type.
 env = ogbench.make_env_and_datasets(
     dataset_name,
     env_only=True,

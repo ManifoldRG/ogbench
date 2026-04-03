@@ -8,6 +8,7 @@ from gymnasium.spaces import Box
 from ogbench.locomaze.ant import AntEnv
 from ogbench.locomaze.humanoid import HumanoidEnv
 from ogbench.locomaze.point import PointEnv
+from ogbench.locomaze.pointy import PointyEnv
 
 
 def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
@@ -21,6 +22,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
     """
     if loco_env_type == 'point':
         loco_env_class = PointEnv
+    elif loco_env_type == 'pointy':
+        loco_env_class = PointyEnv
     elif loco_env_type == 'ant':
         loco_env_class = AntEnv
     elif loco_env_type == 'humanoid':

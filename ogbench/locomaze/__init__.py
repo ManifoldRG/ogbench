@@ -85,6 +85,77 @@ register(
 )
 
 register(
+    id='pointymaze-medium-v0',
+    entry_point='ogbench.locomaze.maze:make_maze_env',
+    max_episode_steps=1000,
+    kwargs=dict(
+        loco_env_type='pointy',
+        maze_env_type='maze',
+        maze_type='medium',
+    ),
+)
+register(
+    id='pointymaze-large-v0',
+    entry_point='ogbench.locomaze.maze:make_maze_env',
+    max_episode_steps=1000,
+    kwargs=dict(
+        loco_env_type='pointy',
+        maze_env_type='maze',
+        maze_type='large',
+    ),
+)
+register(
+    id='pointymaze-giant-v0',
+    entry_point='ogbench.locomaze.maze:make_maze_env',
+    max_episode_steps=1000,
+    kwargs=dict(
+        loco_env_type='pointy',
+        maze_env_type='maze',
+        maze_type='giant',
+    ),
+)
+register(
+    id='pointymaze-teleport-v0',
+    entry_point='ogbench.locomaze.maze:make_maze_env',
+    max_episode_steps=1000,
+    kwargs=dict(
+        loco_env_type='pointy',
+        maze_env_type='maze',
+        maze_type='teleport',
+    ),
+)
+register(
+    id='pointymaze-windingcorridor-v0',
+    entry_point='ogbench.locomaze.maze:make_maze_env',
+    max_episode_steps=1000,
+    kwargs=dict(
+        loco_env_type='pointy',
+        maze_env_type='maze',
+        maze_type='windingcorridor',
+    ),
+)
+register(
+    id='pointymaze-multipath-v0',
+    entry_point='ogbench.locomaze.maze:make_maze_env',
+    max_episode_steps=1000,
+    kwargs=dict(
+        loco_env_type='pointy',
+        maze_env_type='maze',
+        maze_type='multipath',
+    ),
+)
+register(
+    id='pointymaze-longpath-v0',
+    entry_point='ogbench.locomaze.maze:make_maze_env',
+    max_episode_steps=1000,
+    kwargs=dict(
+        loco_env_type='pointy',
+        maze_env_type='maze',
+        maze_type='windingcorridor',
+    ),
+)
+
+register(
     id='antmaze-medium-v0',
     entry_point='ogbench.locomaze.maze:make_maze_env',
     max_episode_steps=1000,
@@ -293,11 +364,35 @@ for task_id in [None, 1, 2, 3, 4, 5]:
         ),
     )
     register(
+        id=f'pointymaze-medium-singletask{task_suffix}-v0',
+        entry_point='ogbench.locomaze.maze:make_maze_env',
+        max_episode_steps=1000,
+        kwargs=dict(
+            loco_env_type='pointy',
+            maze_env_type='maze',
+            maze_type='medium',
+            reward_task_id=reward_task_id,
+            **singletask_dict,
+        ),
+    )
+    register(
         id=f'pointmaze-large-singletask{task_suffix}-v0',
         entry_point='ogbench.locomaze.maze:make_maze_env',
         max_episode_steps=1000,
         kwargs=dict(
             loco_env_type='point',
+            maze_env_type='maze',
+            maze_type='large',
+            reward_task_id=reward_task_id,
+            **singletask_dict,
+        ),
+    )
+    register(
+        id=f'pointymaze-large-singletask{task_suffix}-v0',
+        entry_point='ogbench.locomaze.maze:make_maze_env',
+        max_episode_steps=1000,
+        kwargs=dict(
+            loco_env_type='pointy',
             maze_env_type='maze',
             maze_type='large',
             reward_task_id=reward_task_id,
@@ -317,11 +412,35 @@ for task_id in [None, 1, 2, 3, 4, 5]:
         ),
     )
     register(
+        id=f'pointymaze-giant-singletask{task_suffix}-v0',
+        entry_point='ogbench.locomaze.maze:make_maze_env',
+        max_episode_steps=1000,
+        kwargs=dict(
+            loco_env_type='pointy',
+            maze_env_type='maze',
+            maze_type='giant',
+            reward_task_id=reward_task_id,
+            **singletask_dict,
+        ),
+    )
+    register(
         id=f'pointmaze-teleport-singletask{task_suffix}-v0',
         entry_point='ogbench.locomaze.maze:make_maze_env',
         max_episode_steps=1000,
         kwargs=dict(
             loco_env_type='point',
+            maze_env_type='maze',
+            maze_type='teleport',
+            reward_task_id=reward_task_id,
+            **singletask_dict,
+        ),
+    )
+    register(
+        id=f'pointymaze-teleport-singletask{task_suffix}-v0',
+        entry_point='ogbench.locomaze.maze:make_maze_env',
+        max_episode_steps=1000,
+        kwargs=dict(
+            loco_env_type='pointy',
             maze_env_type='maze',
             maze_type='teleport',
             reward_task_id=reward_task_id,
