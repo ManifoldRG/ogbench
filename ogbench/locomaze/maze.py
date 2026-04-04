@@ -1,9 +1,10 @@
 import tempfile
 import xml.etree.ElementTree as ET
+import re
 
 import mujoco
 import numpy as np
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, Discrete, Tuple
 
 from ogbench.locomaze.ant import AntEnv
 from ogbench.locomaze.humanoid import HumanoidEnv
@@ -42,6 +43,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             maze_type='large',
             maze_map=None,
             custom_tasks=None,
+            mechanisms=None,
+            mechanism_rules=None,
             maze_unit=4.0,
             maze_height=0.5,
             terminate_at_goal=True,
@@ -79,6 +82,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             """
             self._maze_type = maze_type
             self._custom_tasks = custom_tasks
+            self._raw_mechanisms = mechanisms if mechanisms is not None else {}
+            self._mechanism_rules = mechanism_rules if mechanism_rules is not None else {}
             self._maze_unit = maze_unit
             self._maze_height = maze_height
             self._terminate_at_goal = terminate_at_goal
@@ -96,6 +101,14 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             self._offset_y = 4
             self._noise = 1
             self._goal_tol = 1.0 if loco_env_type == 'point' else 0.5
+            self._key_pickup_radius = 0.40 * self._maze_unit
+            self._door_open_radius = 0.55 * self._maze_unit
+            self._switch_toggle_radius = 0.45 * self._maze_unit
+
+            # Key/door mechanism state.
+            self._key_items = []
+            self._door_items = []
+            self._inventory_key_colors = set()
 
             # Define maze map.
             self._teleport_info = None
@@ -214,6 +227,10 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 raise ValueError(f'Unknown maze type: {self._maze_type}')
 
             self.maze_map = np.array(maze_map_data, dtype=np.int8)
+            self._initialize_key_door_mechanisms()
+            self._has_open_action = loco_env_type in ('point', 'pointy') and (
+                len(self._door_items) > 0 or len(self._switch_items) > 0
+            )
 
             # Update XML file.
             xml_file = self.xml_file
@@ -223,6 +240,16 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             tree.write(maze_xml_file)
 
             super().__init__(xml_file=maze_xml_file, *args, **kwargs)
+            self._bind_key_door_geoms()
+            self._move_action_space = self.action_space
+
+            if self._has_open_action:
+                self.action_space = Tuple(
+                    (
+                        self._move_action_space,
+                        Discrete(3),  # 0=no-op, 1=pickup, 2=open/use
+                    )
+                )
 
             # Make custom camera.
             if self.camera_id is None and self.camera_name is None:
@@ -272,6 +299,15 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
         def update_tree(self, tree):
             """Update the XML tree to include the maze."""
             worldbody = tree.find('.//worldbody')
+            asset = tree.find('.//asset')
+
+            # Style pointy agent and goal marker for easier visibility.
+            agent_marker_geom = tree.find('.//geom[@name="agent_marker_geom"]')
+            if agent_marker_geom is not None:
+                agent_marker_geom.set('rgba', '.92 .18 .18 1')
+            target_material = tree.find('.//material[@name="target"]')
+            if target_material is not None:
+                target_material.set('rgba', '.20 .82 .28 1')
 
             # Add walls.
             for i in range(self.maze_map.shape[0]):
@@ -289,6 +325,104 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                             conaffinity='1',
                             material='wall',
                         )
+
+            # Add key/door/switch/gate mechanism visuals.
+            key_colors = {item['color'] for item in self._key_items}
+            door_colors = {item['requires_key_color'] for item in self._door_items}
+            for color in sorted(key_colors):
+                key_material = f'key_{color}_material'
+                if asset.find(f".//material[@name='{key_material}']") is None:
+                    ET.SubElement(asset, 'material', name=key_material, rgba=self._rgba_for_color(color, alpha=1.0))
+            for color in sorted(door_colors):
+                door_material = f'door_{color}_material'
+                if asset.find(f".//material[@name='{door_material}']") is None:
+                    ET.SubElement(asset, 'material', name=door_material, rgba=self._rgba_for_color(color, alpha=1.0))
+            if len(self._switch_items) > 0 and asset.find(".//material[@name='switch_yellow_material']") is None:
+                ET.SubElement(asset, 'material', name='switch_yellow_material', rgba=self._rgba_for_color('yellow', alpha=1.0))
+            if len(self._gate_items) > 0 and asset.find(".//material[@name='gate_black_material']") is None:
+                ET.SubElement(asset, 'material', name='gate_black_material', rgba=self._rgba_for_color('black', alpha=1.0))
+
+            for item in self._key_items:
+                x, y = item['xy']
+                ring_name, stem_name, tooth_name = item['geom_names']
+                z = 0.12 * self._maze_unit
+                ET.SubElement(
+                    worldbody,
+                    'geom',
+                    name=ring_name,
+                    type='sphere',
+                    size=f'{0.10 * self._maze_unit}',
+                    pos=f'{x - 0.11 * self._maze_unit} {y} {z}',
+                    material=f"key_{item['color']}_material",
+                    contype='0',
+                    conaffinity='0',
+                )
+                ET.SubElement(
+                    worldbody,
+                    'geom',
+                    name=stem_name,
+                    type='box',
+                    size=f'{0.15 * self._maze_unit} {0.028 * self._maze_unit} {0.028 * self._maze_unit}',
+                    pos=f'{x + 0.06 * self._maze_unit} {y} {z}',
+                    material=f"key_{item['color']}_material",
+                    contype='0',
+                    conaffinity='0',
+                )
+                ET.SubElement(
+                    worldbody,
+                    'geom',
+                    name=tooth_name,
+                    type='box',
+                    size=f'{0.03 * self._maze_unit} {0.03 * self._maze_unit} {0.028 * self._maze_unit}',
+                    pos=f'{x + 0.21 * self._maze_unit} {y - 0.055 * self._maze_unit} {z}',
+                    material=f"key_{item['color']}_material",
+                    contype='0',
+                    conaffinity='0',
+                )
+
+            for item in self._door_items:
+                x, y = item['xy']
+                sx, sy = item['door_size_xy']
+                ET.SubElement(
+                    worldbody,
+                    'geom',
+                    name=item['geom_name'],
+                    type='box',
+                    size=f'{sx} {sy} {self._maze_height / 2 * self._maze_unit}',
+                    pos=f'{x} {y} {self._maze_height / 2 * self._maze_unit}',
+                    material=f"door_{item['requires_key_color']}_material",
+                    contype='1',
+                    conaffinity='1',
+                )
+
+            for item in self._switch_items:
+                x, y = item['xy']
+                ET.SubElement(
+                    worldbody,
+                    'geom',
+                    name=item['geom_name'],
+                    type='cylinder',
+                    size=f'{0.18 * self._maze_unit} {0.0675 * self._maze_unit}',
+                    pos=f'{x} {y} {0.10 * self._maze_unit}',
+                    material='switch_yellow_material',
+                    contype='0',
+                    conaffinity='0',
+                )
+
+            for item in self._gate_items:
+                x, y = item['xy']
+                sx, sy = item['door_size_xy']
+                ET.SubElement(
+                    worldbody,
+                    'geom',
+                    name=item['geom_name'],
+                    type='box',
+                    size=f'{sx} {sy} {self._maze_height / 2 * self._maze_unit}',
+                    pos=f'{x} {y} {self._maze_height / 2 * self._maze_unit}',
+                    material='gate_black_material',
+                    contype='1',
+                    conaffinity='1',
+                )
 
             # Adjust floor size.
             maze_h, maze_w = self.maze_map.shape
@@ -352,10 +486,11 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     worldbody,
                     'geom',
                     name='target',
-                    type='cylinder',
-                    size='.5 .05',
+                    type='box',
+                    size='.45 .45 .05',
                     pos='0 0 .05',
                     material='target',
+                    rgba='.20 .82 .28 1',
                     contype='0',
                     conaffinity='0',
                 )
@@ -498,7 +633,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             # Do a few random steps to stabilize the environment.
             num_random_actions = 40 if loco_env_type == 'humanoid' else 5
             for _ in range(num_random_actions):
-                super().step(self.action_space.sample())
+                super().step(self._move_action_space.sample())
 
             # Save the goal observation.
             self.set_goal(goal_xy=goal_xy)
@@ -511,6 +646,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             ob, info = super().reset(*args, **kwargs)
             self.set_goal(goal_xy=goal_xy)
             self.set_xy(init_xy)
+            self._reset_key_door_mechanisms()
             ob = self.get_ob()
             info['goal'] = goal_ob
             if render_goal:
@@ -522,9 +658,11 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             if self._success_timing == 'pre':
                 success = self.compute_success()
 
+            move_action, interaction_cmd = self._split_action(action)
+
             prev_xy = self.get_xy().copy() if loco_env_type in ('point', 'pointy') else None
 
-            ob, reward, terminated, truncated, info = super().step(action)
+            ob, reward, terminated, truncated, info = super().step(move_action)
 
             # Keep point-based agents from crossing walls or leaving the maze bounds.
             if loco_env_type in ('point', 'pointy'):
@@ -546,6 +684,18 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                         ]
                         self.set_xy(np.array(teleport_out_xy))
                         break
+
+            key_events = self._update_key_door_mechanisms(interaction_cmd=interaction_cmd)
+            if key_events['picked_key_ids']:
+                info['picked_key_ids'] = key_events['picked_key_ids']
+            if key_events['opened_door_ids']:
+                info['opened_door_ids'] = key_events['opened_door_ids']
+            if key_events['toggled_switch_ids']:
+                info['toggled_switch_ids'] = key_events['toggled_switch_ids']
+            if key_events['opened_gate_ids']:
+                info['opened_gate_ids'] = key_events['opened_gate_ids']
+            if key_events['closed_gate_ids']:
+                info['closed_gate_ids'] = key_events['closed_gate_ids']
 
             if success:
                 if self._terminate_at_goal:
@@ -672,6 +822,467 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             if i < 0 or i >= self.maze_map.shape[0] or j < 0 or j >= self.maze_map.shape[1]:
                 return False
             return self.maze_map[i, j] == 0
+
+        def _split_action(self, action):
+            if self._has_open_action:
+                # Preferred format: (move_action, cmd), where cmd is discrete:
+                # 0=no-op, 1=pickup, 2=open/use.
+                if isinstance(action, (tuple, list)) and len(action) == 2:
+                    move_action = np.asarray(action[0], dtype=np.float32).reshape(-1)
+                    if move_action.size < 2:
+                        move_action = np.zeros(2, dtype=np.float32)
+                    else:
+                        move_action = move_action[:2]
+
+                    interact_raw = action[1]
+                    if isinstance(interact_raw, (np.ndarray, list, tuple)):
+                        interact_arr = np.asarray(interact_raw).reshape(-1)
+                        interact_val = int(interact_arr[0]) if interact_arr.size > 0 else 0
+                    else:
+                        interact_val = int(interact_raw)
+
+                    if interact_val < 0:
+                        interact_val = 0
+                    if interact_val > 2:
+                        interact_val = 2
+                    return move_action, interact_val
+
+            # Backward-compatible fallback for old continuous 3-vector actions.
+            arr = np.asarray(action, dtype=np.float32).reshape(-1)
+            if self._has_open_action and arr.size >= 3:
+                # Map previous boolean interact to open/use.
+                return arr[:2], 2 if bool(arr[2] >= 0.5) else 0
+            if arr.size >= 2:
+                return arr[:2], 0
+            # Fallback for malformed scalar actions.
+            return np.zeros(2, dtype=np.float32), 0
+
+        def _initialize_key_door_mechanisms(self):
+            self._key_items = []
+            self._door_items = []
+            self._switch_items = []
+            self._gate_items = []
+            self._inventory_key_colors = set()
+
+            if not isinstance(self._raw_mechanisms, dict):
+                return
+
+            keys = self._raw_mechanisms.get('keys', [])
+            doors = self._raw_mechanisms.get('doors', [])
+            switches = self._raw_mechanisms.get('switches', [])
+            gates = self._raw_mechanisms.get('gates', [])
+            if keys is None:
+                keys = []
+            if doors is None:
+                doors = []
+            if switches is None:
+                switches = []
+            if gates is None:
+                gates = []
+
+            key_color_by_id = {}
+            for idx, key in enumerate(keys):
+                if not isinstance(key, dict) or 'position' not in key:
+                    continue
+                color = self._normalize_color_name(key.get('color', 'yellow'))
+                key_id = str(key.get('id', f'k{idx}'))
+                key_color_by_id[key_id] = color
+                i, j = int(key['position'][1]), int(key['position'][0])
+                self._key_items.append(
+                    dict(
+                        id=key_id,
+                        color=color,
+                        ij=(i, j),
+                        xy=self.ij_to_xy((i, j)),
+                        collected=False,
+                        geom_names=[
+                            f'json_key_ring_{idx}_{self._sanitize_name(key_id)}',
+                            f'json_key_stem_{idx}_{self._sanitize_name(key_id)}',
+                            f'json_key_tooth_{idx}_{self._sanitize_name(key_id)}',
+                        ],
+                        geom_ids=[],
+                    )
+                )
+
+            for idx, door in enumerate(doors):
+                if not isinstance(door, dict) or 'position' not in door:
+                    continue
+                door_id = str(door.get('id', f'd{idx}'))
+                required = door.get('requires_key', 'yellow')
+                required = key_color_by_id.get(str(required), required)
+                required_color = self._normalize_color_name(required)
+                initial_state = str(door.get('initial_state', 'locked')).lower()
+                locked = initial_state != 'open'
+                i, j = int(door['position'][1]), int(door['position'][0])
+                closed_xy, door_size_xy, slide_dir_xy = self._compute_door_geometry(i, j)
+                open_xy = (
+                    closed_xy[0] + slide_dir_xy[0] * 1.0 * self._maze_unit,
+                    closed_xy[1] + slide_dir_xy[1] * 1.0 * self._maze_unit,
+                )
+                self._door_items.append(
+                    dict(
+                        id=door_id,
+                        requires_key_color=required_color,
+                        ij=(i, j),
+                        xy=closed_xy,
+                        closed_xy=closed_xy,
+                        open_xy=open_xy,
+                        door_size_xy=door_size_xy,
+                        locked=locked,
+                        opened=False,
+                        geom_name=f'json_door_{idx}_{self._sanitize_name(door_id)}',
+                        geom_id=None,
+                    )
+                )
+
+            gate_by_id = {}
+            for idx, gate in enumerate(gates):
+                if not isinstance(gate, dict) or 'position' not in gate:
+                    continue
+                gate_id = str(gate.get('id', f'g{idx}'))
+                initial_state = str(gate.get('initial_state', 'closed')).lower()
+                closed = initial_state != 'open'
+                i, j = int(gate['position'][1]), int(gate['position'][0])
+                closed_xy, door_size_xy, slide_dir_xy = self._compute_door_geometry(i, j)
+                open_xy = (
+                    closed_xy[0] + slide_dir_xy[0] * 1.0 * self._maze_unit,
+                    closed_xy[1] + slide_dir_xy[1] * 1.0 * self._maze_unit,
+                )
+                gate_item = dict(
+                    id=gate_id,
+                    ij=(i, j),
+                    xy=closed_xy,
+                    closed_xy=closed_xy,
+                    open_xy=open_xy,
+                    door_size_xy=door_size_xy,
+                    closed=closed,
+                    opened=not closed,
+                    initial_opened=not closed,
+                    geom_name=f'json_gate_{idx}_{self._sanitize_name(gate_id)}',
+                    geom_id=None,
+                )
+                self._gate_items.append(gate_item)
+                gate_by_id[gate_id] = gate_item
+
+            default_switch_type = str(self._mechanism_rules.get('switch_type', 'toggle')).lower()
+            for idx, switch in enumerate(switches):
+                if not isinstance(switch, dict) or 'position' not in switch:
+                    continue
+                switch_id = str(switch.get('id', f's{idx}'))
+                i, j = int(switch['position'][1]), int(switch['position'][0])
+                controls = switch.get('controls', [])
+                if not isinstance(controls, list):
+                    controls = []
+                controls = [str(cid) for cid in controls if str(cid) in gate_by_id]
+                switch_type = str(switch.get('switch_type', default_switch_type)).lower()
+                initial_state = str(switch.get('initial_state', 'off')).lower()
+                is_on = initial_state in {'on', 'true', '1'}
+                self._switch_items.append(
+                    dict(
+                        id=switch_id,
+                        ij=(i, j),
+                        xy=self.ij_to_xy((i, j)),
+                        controls=controls,
+                        switch_type=switch_type,
+                        is_on=is_on,
+                        initial_is_on=is_on,
+                        geom_name=f'json_switch_{idx}_{self._sanitize_name(switch_id)}',
+                        geom_id=None,
+                    )
+                )
+
+        def _bind_key_door_geoms(self):
+            for item in self._key_items:
+                item['geom_ids'] = []
+                for geom_name in item['geom_names']:
+                    try:
+                        item['geom_ids'].append(self.model.geom(geom_name).id)
+                    except Exception:
+                        continue
+
+            for item in self._door_items:
+                try:
+                    item['geom_id'] = self.model.geom(item['geom_name']).id
+                except Exception:
+                    item['geom_id'] = None
+
+            for item in self._switch_items:
+                try:
+                    item['geom_id'] = self.model.geom(item['geom_name']).id
+                except Exception:
+                    item['geom_id'] = None
+
+            for item in self._gate_items:
+                try:
+                    item['geom_id'] = self.model.geom(item['geom_name']).id
+                except Exception:
+                    item['geom_id'] = None
+
+        def _reset_key_door_mechanisms(self):
+            self._inventory_key_colors = set()
+
+            for item in self._key_items:
+                item['collected'] = False
+                for geom_id in item['geom_ids']:
+                    self.model.geom_rgba[geom_id, 3] = 1.0
+
+            for item in self._door_items:
+                locked = bool(item['locked'])
+                item['opened'] = False
+                geom_id = item['geom_id']
+                if geom_id is None:
+                    continue
+                if locked:
+                    self._set_door_closed_geom(geom_id, item['closed_xy'])
+                else:
+                    self._set_door_open_geom(geom_id, item['open_xy'])
+                    item['opened'] = True
+
+            for item in self._switch_items:
+                item['is_on'] = bool(item.get('initial_is_on', False))
+                geom_id = item['geom_id']
+                if geom_id is None:
+                    continue
+                if item['is_on']:
+                    self.model.geom_rgba[geom_id, :4] = np.array([1.0, 0.95, 0.35, 1.0])
+                else:
+                    self.model.geom_rgba[geom_id, :4] = np.array([0.70, 0.62, 0.10, 1.0])
+
+            for gate in self._gate_items:
+                gate['opened'] = bool(gate.get('initial_opened', False))
+                gate['closed'] = not gate['opened']
+
+            self._refresh_gates_from_switches()
+
+            mujoco.mj_forward(self.model, self.data)
+
+        def _set_gate_closed_geom(self, geom_id, closed_xy):
+            self.model.geom_pos[geom_id, :3] = np.array(
+                [closed_xy[0], closed_xy[1], self._maze_height / 2 * self._maze_unit]
+            )
+            self.model.geom_contype[geom_id] = 1
+            self.model.geom_conaffinity[geom_id] = 1
+            self.model.geom_rgba[geom_id, 3] = 1.0
+
+        def _set_gate_open_geom(self, geom_id, open_xy):
+            self.model.geom_pos[geom_id, :3] = np.array([open_xy[0], open_xy[1], self._maze_height / 2 * self._maze_unit])
+            self.model.geom_contype[geom_id] = 0
+            self.model.geom_conaffinity[geom_id] = 0
+            self.model.geom_rgba[geom_id, 3] = 0.8
+
+        def _refresh_gates_from_switches(self):
+            for gate in self._gate_items:
+                controllers = [s for s in self._switch_items if gate['id'] in s['controls']]
+                if len(controllers) > 0:
+                    should_open = any(s['is_on'] for s in controllers)
+                else:
+                    should_open = gate['opened']
+
+                geom_id = gate['geom_id']
+                if should_open:
+                    gate['opened'] = True
+                    gate['closed'] = False
+                    if geom_id is not None:
+                        self._set_gate_open_geom(geom_id, gate['open_xy'])
+                else:
+                    gate['opened'] = False
+                    gate['closed'] = True
+                    if geom_id is not None:
+                        self._set_gate_closed_geom(geom_id, gate['closed_xy'])
+
+        def _set_door_closed_geom(self, geom_id, closed_xy):
+            self.model.geom_pos[geom_id, :3] = np.array(
+                [closed_xy[0], closed_xy[1], self._maze_height / 2 * self._maze_unit]
+            )
+            self.model.geom_contype[geom_id] = 1
+            self.model.geom_conaffinity[geom_id] = 1
+            self.model.geom_rgba[geom_id, 3] = 1.0
+
+        def _set_door_open_geom(self, geom_id, open_xy):
+            self.model.geom_pos[geom_id, :3] = np.array(
+                [open_xy[0], open_xy[1], self._maze_height / 2 * self._maze_unit]
+            )
+            self.model.geom_contype[geom_id] = 0
+            self.model.geom_conaffinity[geom_id] = 0
+            self.model.geom_rgba[geom_id, 3] = 0.8
+
+        def _update_key_door_mechanisms(self, interaction_cmd=0):
+            events = {
+                'picked_key_ids': [],
+                'opened_door_ids': [],
+                'toggled_switch_ids': [],
+                'opened_gate_ids': [],
+                'closed_gate_ids': [],
+            }
+            if (
+                len(self._key_items) == 0
+                and len(self._door_items) == 0
+                and len(self._switch_items) == 0
+                and len(self._gate_items) == 0
+            ):
+                return events
+
+            cur_xy = self.get_xy()
+            wants_pickup = interaction_cmd == 1
+            wants_use = interaction_cmd == 2
+
+            # Pick up keys.
+            if wants_pickup:
+                for item in self._key_items:
+                    if item['collected']:
+                        continue
+                    if np.linalg.norm(cur_xy - np.array(item['xy'])) <= self._key_pickup_radius:
+                        item['collected'] = True
+                        self._inventory_key_colors.add(item['color'])
+                        events['picked_key_ids'].append(item['id'])
+                        for geom_id in item['geom_ids']:
+                            self.model.geom_rgba[geom_id, 3] = 0.0
+
+            # Unlock/open matching doors only when the agent explicitly chooses to open and is close enough.
+            for item in self._door_items:
+                if item['opened']:
+                    continue
+                if not wants_use:
+                    continue
+                if np.linalg.norm(cur_xy - np.array(item['closed_xy'])) > self._door_open_radius:
+                    continue
+                if item['requires_key_color'] in self._inventory_key_colors:
+                    geom_id = item['geom_id']
+                    if geom_id is not None:
+                        self._set_door_open_geom(geom_id, item['open_xy'])
+                    item['opened'] = True
+                    item['locked'] = False
+                    if bool(self._mechanism_rules.get('key_consumption', True)):
+                        self._inventory_key_colors.discard(item['requires_key_color'])
+                    events['opened_door_ids'].append(item['id'])
+
+            # Toggle switches with the interaction action when close.
+            if wants_use:
+                for item in self._switch_items:
+                    if np.linalg.norm(cur_xy - np.array(item['xy'])) > self._switch_toggle_radius:
+                        continue
+                    if item['switch_type'] == 'toggle':
+                        item['is_on'] = not item['is_on']
+                    else:
+                        item['is_on'] = True
+                    events['toggled_switch_ids'].append(item['id'])
+                    geom_id = item['geom_id']
+                    if geom_id is not None:
+                        if item['is_on']:
+                            self.model.geom_rgba[geom_id, :4] = np.array([1.0, 0.95, 0.35, 1.0])
+                        else:
+                            self.model.geom_rgba[geom_id, :4] = np.array([0.70, 0.62, 0.10, 1.0])
+
+            # Gate state follows switch states.
+            prev_gate_open = {g['id']: bool(g['opened']) for g in self._gate_items}
+            self._refresh_gates_from_switches()
+            for gate in self._gate_items:
+                was_open = prev_gate_open.get(gate['id'], False)
+                is_open = bool(gate['opened'])
+                if (not was_open) and is_open:
+                    events['opened_gate_ids'].append(gate['id'])
+                elif was_open and (not is_open):
+                    events['closed_gate_ids'].append(gate['id'])
+
+            if (
+                events['picked_key_ids']
+                or events['opened_door_ids']
+                or events['toggled_switch_ids']
+                or events['opened_gate_ids']
+                or events['closed_gate_ids']
+            ):
+                mujoco.mj_forward(self.model, self.data)
+            return events
+
+        def _sanitize_name(self, value):
+            return re.sub(r'[^a-zA-Z0-9_\-]', '_', str(value))
+
+        def _normalize_color_name(self, color):
+            if color is None:
+                return 'yellow'
+            color_name = str(color).strip().lower()
+            if color_name == 'grey':
+                return 'gray'
+            if color_name == 'purple':
+                return 'magenta'
+            if color_name not in {
+                'red',
+                'green',
+                'blue',
+                'yellow',
+                'orange',
+                'cyan',
+                'magenta',
+                'white',
+                'black',
+                'gray',
+            }:
+                return 'yellow'
+            return color_name
+
+        def _rgba_for_color(self, color_name, alpha=1.0):
+            palette = {
+                'red': (0.90, 0.22, 0.22),
+                'green': (0.20, 0.78, 0.30),
+                'blue': (0.22, 0.45, 0.90),
+                'yellow': (0.95, 0.85, 0.20),
+                'orange': (0.95, 0.55, 0.20),
+                'cyan': (0.20, 0.85, 0.85),
+                'magenta': (0.78, 0.30, 0.90),
+                'white': (0.95, 0.95, 0.95),
+                'black': (0.15, 0.15, 0.15),
+                'gray': (0.55, 0.55, 0.55),
+            }
+            color_name = self._normalize_color_name(color_name)
+            r, g, b = palette[color_name]
+            return f'{r:.3f} {g:.3f} {b:.3f} {float(alpha):.3f}'
+
+        def _compute_door_geometry(self, i, j):
+            """Infer a wall-attached closed door shape and its slide direction."""
+
+            def is_wall(ii, jj):
+                if ii < 0 or ii >= self.maze_map.shape[0] or jj < 0 or jj >= self.maze_map.shape[1]:
+                    return True
+                return self.maze_map[ii, jj] == 1
+
+            def wall_distance_cells(di, dj):
+                steps = 1
+                while True:
+                    ii = i + di * steps
+                    jj = j + dj * steps
+                    if is_wall(ii, jj):
+                        return max(0.5, steps - 0.5)
+                    steps += 1
+
+            base_x, base_y = self.ij_to_xy((i, j))
+            dist_up = wall_distance_cells(-1, 0) * self._maze_unit
+            dist_down = wall_distance_cells(1, 0) * self._maze_unit
+            dist_left = wall_distance_cells(0, -1) * self._maze_unit
+            dist_right = wall_distance_cells(0, 1) * self._maze_unit
+
+            # Door thickness across travel direction; span attaches to opposite walls.
+            thickness = 0.09 * self._maze_unit
+            min_half_span = 0.12 * self._maze_unit
+
+            vertical_span = dist_up + dist_down
+            horizontal_span = dist_left + dist_right
+
+            # Horizontal corridor (agent mostly moves in x): door spans y (touches top/bottom walls).
+            if vertical_span <= horizontal_span:
+                half_span_y = max(min_half_span, 0.5 * vertical_span)
+                center_shift_y = 0.5 * (dist_down - dist_up)
+                closed_xy = (base_x, base_y + center_shift_y)
+                door_size_xy = (thickness, half_span_y)
+                slide_dir_xy = (0.0, -1.0 if dist_up <= dist_down else 1.0)
+                return closed_xy, door_size_xy, slide_dir_xy
+
+            # Vertical corridor (agent mostly moves in y): door spans x (touches left/right walls).
+            half_span_x = max(min_half_span, 0.5 * horizontal_span)
+            center_shift_x = 0.5 * (dist_right - dist_left)
+            closed_xy = (base_x + center_shift_x, base_y)
+            door_size_xy = (half_span_x, thickness)
+            slide_dir_xy = (-1.0 if dist_left <= dist_right else 1.0, 0.0)
+            return closed_xy, door_size_xy, slide_dir_xy
 
     class BallEnv(MazeEnv):
         def update_tree(self, tree):

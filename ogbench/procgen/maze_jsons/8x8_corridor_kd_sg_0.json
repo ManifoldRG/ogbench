@@ -1,0 +1,82 @@
+{
+  "task_id": "8x8_corridor_kd_sg_0",
+  "version": "1.0",
+  "seed": 0,
+  "difficulty_tier": 4,
+  "description": "8x8 corridor with turns, key-door, and switch-gate mechanism chain.",
+  "maze": {
+    "dimensions": [
+      8,
+      8
+    ],
+    "walls": [
+      [1, 2], [2, 2], [3, 2], [4, 2], [5, 2],
+      [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]
+    ],
+    "start": [
+      1,
+      1
+    ],
+    "goal": [
+      6,
+      6
+    ]
+  },
+  "mechanisms": {
+    "keys": [
+      {
+        "id": "key_red",
+        "position": [3, 1],
+        "color": "red"
+      }
+    ],
+    "doors": [
+      {
+        "id": "door_red",
+        "position": [3, 3],
+        "color": "red",
+        "requires_key": "key_red"
+      }
+    ],
+    "switches": [
+      {
+        "id": "switch_yellow",
+        "position": [1, 5],
+        "color": "yellow",
+        "switch_type": "toggle"
+      }
+    ],
+    "gates": [
+      {
+        "id": "gate_black",
+        "position": [3, 6],
+        "color": "black",
+        "controlled_by": "switch_yellow"
+      }
+    ],
+    "blocks": [],
+    "teleporters": [],
+    "hazards": []
+  },
+  "rules": {
+    "key_consumption": true,
+    "switch_type": "toggle",
+    "hidden_mechanisms": [],
+    "observability": "full",
+    "view_size": 7
+  },
+  "goal": {
+    "type": "reach_position",
+    "target": [
+      6,
+      6
+    ],
+    "auxiliary_conditions": []
+  },
+  "metadata": {
+    "chain_pattern": "key_door_then_switch_gate",
+    "tiling": "square",
+    "wall_topology": "winding"
+  },
+  "max_steps": 100
+}
