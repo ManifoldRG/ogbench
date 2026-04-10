@@ -104,6 +104,9 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             self._key_pickup_radius = 0.40 * self._maze_unit
             self._door_open_radius = 0.55 * self._maze_unit
             self._switch_toggle_radius = 0.45 * self._maze_unit
+            # Effective collision disk for point/pointy movement checks.
+            # Keep this smaller than the visual/body geom to avoid over-blocking.
+            self._point_collision_radius = 0.18 * self._maze_unit
 
             # Key/door mechanism state.
             self._key_items = []
@@ -402,8 +405,9 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     'geom',
                     name=item['geom_name'],
                     type='cylinder',
-                    size=f'{0.18 * self._maze_unit} {0.0675 * self._maze_unit}',
-                    pos=f'{x} {y} {0.10 * self._maze_unit}',
+                    # Keep switch as a thin floor region so the agent can pass over it.
+                    size=f'{0.22 * self._maze_unit} {0.01 * self._maze_unit}',
+                    pos=f'{x} {y} {0.01 * self._maze_unit}',
                     material='switch_yellow_material',
                     contype='0',
                     conaffinity='0',
@@ -665,11 +669,21 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             ob, reward, terminated, truncated, info = super().step(move_action)
 
             # Keep point-based agents from crossing walls or leaving the maze bounds.
+            movement_blocked = False
             if loco_env_type in ('point', 'pointy'):
                 cur_xy = self.get_xy().copy()
-                if not self._is_xy_in_free_cell(cur_xy):
+
+                # Strict collision rule: if the swept agent disk would overlap any wall,
+                # closed door, or closed gate, reject the whole translation.
+                if prev_xy is not None:
+                    if not self._is_motion_collision_free(prev_xy, cur_xy):
+                        self.set_xy(prev_xy)
+                        ob = self.get_ob()
+                        movement_blocked = True
+                elif not self._is_xy_in_free_cell(cur_xy):
                     self.set_xy(prev_xy)
                     ob = self.get_ob()
+                    movement_blocked = True
 
             if self._success_timing == 'post':
                 success = self.compute_success()
@@ -690,12 +704,16 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 info['picked_key_ids'] = key_events['picked_key_ids']
             if key_events['opened_door_ids']:
                 info['opened_door_ids'] = key_events['opened_door_ids']
+            if key_events['closed_door_ids']:
+                info['closed_door_ids'] = key_events['closed_door_ids']
             if key_events['toggled_switch_ids']:
                 info['toggled_switch_ids'] = key_events['toggled_switch_ids']
             if key_events['opened_gate_ids']:
                 info['opened_gate_ids'] = key_events['opened_gate_ids']
             if key_events['closed_gate_ids']:
                 info['closed_gate_ids'] = key_events['closed_gate_ids']
+            if movement_blocked:
+                info['movement_blocked'] = True
 
             if success:
                 if self._terminate_at_goal:
@@ -823,6 +841,108 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 return False
             return self.maze_map[i, j] == 0
 
+        def _is_motion_path_clear(self, start_xy, end_xy):
+            """Return True if the swept center path stays in free cells.
+
+            This prevents point agents from cutting corners through walls when
+            a single action moves across a cell boundary.
+            """
+            start_xy = np.asarray(start_xy, dtype=np.float32)
+            end_xy = np.asarray(end_xy, dtype=np.float32)
+            delta = end_xy - start_xy
+            dist = float(np.linalg.norm(delta))
+            if dist <= 1e-8:
+                return True
+
+            # Sample along the segment at sub-cell resolution.
+            step_len = max(0.05 * self._maze_unit, 1e-4)
+            num_samples = max(2, int(np.ceil(dist / step_len)) + 1)
+            for t in np.linspace(0.0, 1.0, num_samples)[1:]:
+                probe_xy = start_xy + t * delta
+                if not self._is_xy_in_free_cell(probe_xy):
+                    return False
+            return True
+
+        def _get_point_agent_radius(self):
+            """Get point/pointy collision radius in world units."""
+            return float(self._point_collision_radius)
+
+        def _iter_blocking_rects(self):
+            """Yield axis-aligned blocking rectangles as (cx, cy, hx, hy)."""
+            wall_half = 0.5 * self._maze_unit
+            for i in range(self.maze_map.shape[0]):
+                for j in range(self.maze_map.shape[1]):
+                    if self.maze_map[i, j] == 1:
+                        cx, cy = self.ij_to_xy((i, j))
+                        yield float(cx), float(cy), float(wall_half), float(wall_half)
+
+            for door in self._door_items:
+                if bool(door.get('opened', False)):
+                    continue
+                cx, cy = door['closed_xy']
+                hx, hy = door['door_size_xy']
+                yield float(cx), float(cy), float(hx), float(hy)
+
+            for gate in self._gate_items:
+                if bool(gate.get('opened', False)):
+                    continue
+                cx, cy = gate['closed_xy']
+                hx, hy = gate['door_size_xy']
+                yield float(cx), float(cy), float(hx), float(hy)
+
+        def _disk_overlaps_rect(self, xy, radius, rect):
+            """Return True when a disk centered at xy overlaps an axis-aligned rect."""
+            cx, cy, hx, hy = rect
+            dx = abs(float(xy[0]) - cx) - (hx + radius)
+            dy = abs(float(xy[1]) - cy) - (hy + radius)
+            return dx <= 0.0 and dy <= 0.0
+
+        def _disk_clearance_to_rect(self, xy, radius, rect):
+            """Return non-negative clearance from disk boundary to rectangle boundary."""
+            cx, cy, hx, hy = rect
+            dx = abs(float(xy[0]) - cx) - (hx + radius)
+            dy = abs(float(xy[1]) - cy) - (hy + radius)
+            ox = max(dx, 0.0)
+            oy = max(dy, 0.0)
+            return float(np.hypot(ox, oy))
+
+        def _is_motion_collision_free(self, start_xy, end_xy):
+            """Return True if swept disk from start_xy to end_xy avoids all blockers."""
+            start_xy = np.asarray(start_xy, dtype=np.float32)
+            end_xy = np.asarray(end_xy, dtype=np.float32)
+            delta = end_xy - start_xy
+            dist = float(np.linalg.norm(delta))
+
+            radius = self._get_point_agent_radius()
+            blocking_rects = list(self._iter_blocking_rects())
+
+            # If already near contact, disallow moves that press further into blockers.
+            contact_margin = 0.03 * self._maze_unit
+            clearance_eps = 1e-5
+            for rect in blocking_rects:
+                start_clearance = self._disk_clearance_to_rect(start_xy, radius, rect)
+                if start_clearance > contact_margin:
+                    continue
+                end_clearance = self._disk_clearance_to_rect(end_xy, radius, rect)
+                if end_clearance + clearance_eps < start_clearance:
+                    return False
+
+            if dist <= 1e-8:
+                for rect in blocking_rects:
+                    if self._disk_overlaps_rect(start_xy, radius, rect):
+                        return False
+                return True
+
+            # Fine enough sampling to avoid tunneling through thin doors.
+            step_len = max(0.02 * self._maze_unit, 0.05 * max(radius, 1e-4))
+            num_samples = max(3, int(np.ceil(dist / step_len)) + 1)
+            for t in np.linspace(0.0, 1.0, num_samples):
+                probe_xy = start_xy + t * delta
+                for rect in blocking_rects:
+                    if self._disk_overlaps_rect(probe_xy, radius, rect):
+                        return False
+            return True
+
         def _split_action(self, action):
             if self._has_open_action:
                 # Preferred format: (move_action, cmd), where cmd is discrete:
@@ -929,6 +1049,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                         open_xy=open_xy,
                         door_size_xy=door_size_xy,
                         locked=locked,
+                        initial_locked=locked,
                         opened=False,
                         geom_name=f'json_door_{idx}_{self._sanitize_name(door_id)}',
                         geom_id=None,
@@ -936,10 +1057,17 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 )
 
             gate_by_id = {}
+            gate_controlled_by = {}
             for idx, gate in enumerate(gates):
                 if not isinstance(gate, dict) or 'position' not in gate:
                     continue
                 gate_id = str(gate.get('id', f'g{idx}'))
+                controlled_by = gate.get('controlled_by', [])
+                if isinstance(controlled_by, str):
+                    controlled_by = [controlled_by]
+                elif not isinstance(controlled_by, (list, tuple, set)):
+                    controlled_by = []
+                gate_controlled_by[gate_id] = [str(sid) for sid in controlled_by]
                 initial_state = str(gate.get('initial_state', 'closed')).lower()
                 closed = initial_state != 'open'
                 i, j = int(gate['position'][1]), int(gate['position'][0])
@@ -974,6 +1102,14 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 if not isinstance(controls, list):
                     controls = []
                 controls = [str(cid) for cid in controls if str(cid) in gate_by_id]
+
+                # Also support reverse JSON wiring where each gate declares `controlled_by`.
+                for gate_id, controller_ids in gate_controlled_by.items():
+                    if switch_id in controller_ids:
+                        controls.append(gate_id)
+
+                # Keep deterministic ordering and remove duplicates.
+                controls = list(dict.fromkeys(controls))
                 switch_type = str(switch.get('switch_type', default_switch_type)).lower()
                 initial_state = str(switch.get('initial_state', 'off')).lower()
                 is_on = initial_state in {'on', 'true', '1'}
@@ -1027,7 +1163,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     self.model.geom_rgba[geom_id, 3] = 1.0
 
             for item in self._door_items:
-                locked = bool(item['locked'])
+                locked = bool(item.get('initial_locked', item.get('locked', True)))
+                item['locked'] = locked
                 item['opened'] = False
                 geom_id = item['geom_id']
                 if geom_id is None:
@@ -1065,10 +1202,11 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             self.model.geom_rgba[geom_id, 3] = 1.0
 
         def _set_gate_open_geom(self, geom_id, open_xy):
-            self.model.geom_pos[geom_id, :3] = np.array([open_xy[0], open_xy[1], self._maze_height / 2 * self._maze_unit])
+            # Hide open gates to avoid partial-panel artifacts in narrow corridors.
+            self.model.geom_pos[geom_id, :3] = np.array([open_xy[0], open_xy[1], -10.0 * self._maze_unit])
             self.model.geom_contype[geom_id] = 0
             self.model.geom_conaffinity[geom_id] = 0
-            self.model.geom_rgba[geom_id, 3] = 0.8
+            self.model.geom_rgba[geom_id, 3] = 0.0
 
         def _refresh_gates_from_switches(self):
             for gate in self._gate_items:
@@ -1099,17 +1237,17 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             self.model.geom_rgba[geom_id, 3] = 1.0
 
         def _set_door_open_geom(self, geom_id, open_xy):
-            self.model.geom_pos[geom_id, :3] = np.array(
-                [open_xy[0], open_xy[1], self._maze_height / 2 * self._maze_unit]
-            )
+            # Hide open doors to avoid partial-panel artifacts in narrow corridors.
+            self.model.geom_pos[geom_id, :3] = np.array([open_xy[0], open_xy[1], -10.0 * self._maze_unit])
             self.model.geom_contype[geom_id] = 0
             self.model.geom_conaffinity[geom_id] = 0
-            self.model.geom_rgba[geom_id, 3] = 0.8
+            self.model.geom_rgba[geom_id, 3] = 0.0
 
         def _update_key_door_mechanisms(self, interaction_cmd=0):
             events = {
                 'picked_key_ids': [],
                 'opened_door_ids': [],
+                'closed_door_ids': [],
                 'toggled_switch_ids': [],
                 'opened_gate_ids': [],
                 'closed_gate_ids': [],
@@ -1138,21 +1276,35 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                         for geom_id in item['geom_ids']:
                             self.model.geom_rgba[geom_id, 3] = 0.0
 
-            # Unlock/open matching doors only when the agent explicitly chooses to open and is close enough.
+            # Toggle doors when the agent explicitly chooses to use and is close enough.
             for item in self._door_items:
-                if item['opened']:
-                    continue
                 if not wants_use:
                     continue
-                if np.linalg.norm(cur_xy - np.array(item['closed_xy'])) > self._door_open_radius:
+                if not self._is_near_door_for_interaction(cur_xy, item):
                     continue
-                if item['requires_key_color'] in self._inventory_key_colors:
-                    geom_id = item['geom_id']
+
+                geom_id = item['geom_id']
+
+                # If door is currently open, interact closes it.
+                if item['opened']:
+                    if geom_id is not None:
+                        self._set_door_closed_geom(geom_id, item['closed_xy'])
+                    item['opened'] = False
+                    events['closed_door_ids'].append(item['id'])
+                    continue
+
+                # Closed door can be opened if already unlocked or matching key is in inventory.
+                can_open = (not bool(item.get('locked', True))) or (
+                    item['requires_key_color'] in self._inventory_key_colors
+                )
+                if can_open:
                     if geom_id is not None:
                         self._set_door_open_geom(geom_id, item['open_xy'])
                     item['opened'] = True
                     item['locked'] = False
-                    if bool(self._mechanism_rules.get('key_consumption', True)):
+                    if bool(self._mechanism_rules.get('key_consumption', True)) and (
+                        item['requires_key_color'] in self._inventory_key_colors
+                    ):
                         self._inventory_key_colors.discard(item['requires_key_color'])
                     events['opened_door_ids'].append(item['id'])
 
@@ -1187,12 +1339,28 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             if (
                 events['picked_key_ids']
                 or events['opened_door_ids']
+                or events['closed_door_ids']
                 or events['toggled_switch_ids']
                 or events['opened_gate_ids']
                 or events['closed_gate_ids']
             ):
                 mujoco.mj_forward(self.model, self.data)
             return events
+
+        def _is_near_door_for_interaction(self, cur_xy, door_item):
+            """Return True if the agent is close enough to interact with a door panel.
+
+            Distance is measured to the door rectangle boundary (not door center),
+            which is robust for long doors that span a corridor.
+            """
+            cx, cy = door_item['closed_xy']
+            sx, sy = door_item['door_size_xy']
+
+            dx = abs(float(cur_xy[0]) - float(cx)) - float(sx)
+            dy = abs(float(cur_xy[1]) - float(cy)) - float(sy)
+            outside = np.maximum(np.array([dx, dy], dtype=np.float32), 0.0)
+            dist_to_panel = float(np.linalg.norm(outside))
+            return dist_to_panel <= float(self._door_open_radius)
 
         def _sanitize_name(self, value):
             return re.sub(r'[^a-zA-Z0-9_\-]', '_', str(value))
@@ -1273,7 +1441,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 center_shift_y = 0.5 * (dist_down - dist_up)
                 closed_xy = (base_x, base_y + center_shift_y)
                 door_size_xy = (thickness, half_span_y)
-                slide_dir_xy = (0.0, -1.0 if dist_up <= dist_down else 1.0)
+                # Slide along corridor travel direction (x), toward the closer side wall.
+                slide_dir_xy = (-1.0 if dist_left <= dist_right else 1.0, 0.0)
                 return closed_xy, door_size_xy, slide_dir_xy
 
             # Vertical corridor (agent mostly moves in y): door spans x (touches left/right walls).
@@ -1281,7 +1450,8 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             center_shift_x = 0.5 * (dist_right - dist_left)
             closed_xy = (base_x + center_shift_x, base_y)
             door_size_xy = (half_span_x, thickness)
-            slide_dir_xy = (-1.0 if dist_left <= dist_right else 1.0, 0.0)
+            # Slide along corridor travel direction (y), toward the closer side wall.
+            slide_dir_xy = (0.0, -1.0 if dist_up <= dist_down else 1.0)
             return closed_xy, door_size_xy, slide_dir_xy
 
     class BallEnv(MazeEnv):

@@ -12,7 +12,9 @@ from gymnasium.spaces import Box
 class PointyEnv(MujocoEnv, utils.EzPickle):
     """PointMass environment with a directional pyramid marker.
 
-    This keeps the same point-mass physics as PointEnv, but renders a pointy visual marker that indicates heading.
+    Action semantics are (delta_forward, delta_heading), where heading is in radians.
+    This keeps the same point-mass physics as PointEnv, but renders a pointy
+    visual marker that indicates heading.
     """
 
     xml_file = os.path.join(os.path.dirname(__file__), 'assets', 'pointy.xml')
@@ -53,6 +55,8 @@ class PointyEnv(MujocoEnv, utils.EzPickle):
         )
         self._marker_height = 0.05
         self._marker_heading = np.array([1.0, 0.0], dtype=np.float64)
+        self._forward_scale = 0.2
+        self._heading_scale = 0.35
 
     def _update_marker_pose(self, heading_xy=None):
         if heading_xy is not None:
@@ -75,14 +79,30 @@ class PointyEnv(MujocoEnv, utils.EzPickle):
         prev_qpos = self.data.qpos.copy()
         prev_qvel = self.data.qvel.copy()
 
-        action = 0.2 * action
+        action = np.asarray(action, dtype=np.float64).reshape(-1)
+        if action.size < 2:
+            padded = np.zeros(2, dtype=np.float64)
+            padded[: action.size] = action
+            action = padded
 
-        self._update_marker_pose(heading_xy=action)
+        delta_forward = self._forward_scale * float(action[0])
+        delta_heading = self._heading_scale * float(action[1])
 
-        self.data.qpos[:] = self.data.qpos + action
+        # Rotate current heading by delta_heading.
+        c = math.cos(delta_heading)
+        s = math.sin(delta_heading)
+        hx, hy = self._marker_heading
+        new_heading = np.array([c * hx - s * hy, s * hx + c * hy], dtype=np.float64)
+        heading_norm = np.linalg.norm(new_heading)
+        if heading_norm > 1e-8:
+            self._marker_heading = new_heading / heading_norm
+
+        delta_xy = delta_forward * self._marker_heading
+
+        # Kinematic update: apply intended translation directly. Maze collision logic
+        # in the wrapper decides whether to keep or reject the move.
+        self.data.qpos[:] = self.data.qpos + delta_xy
         self.data.qvel[:] = np.array([0.0, 0.0])
-
-        mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
         self._update_marker_pose()
 
         qpos = self.data.qpos.flat.copy()
