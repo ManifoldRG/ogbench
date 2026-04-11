@@ -10,7 +10,7 @@ from ogbench.procgen.maze_json_interface import make_pointymaze_env_from_json
 
 # Specify the maze JSON file to visualize.
 # Default: single_key example. You can override via first CLI arg.
-default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '8x8_corridor_sg_kd_0.json'
+default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '14x14_corridor_sg_kd_0.json'
 maze_json_path = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else default_json
 
 # Build a pointymaze environment directly from the JSON maze.
@@ -24,14 +24,14 @@ env, parsed_maze = make_pointymaze_env_from_json(
 	add_noise_to_goal=False,
 )
 
-print(f'Loaded maze: {maze_json_path}')
-print(f'Task ID: {parsed_maze.task_id}')
-print(f'Dimensions (W,H): ({parsed_maze.width}, {parsed_maze.height})')
-print(f'Mechanisms keys: {len(parsed_maze.mechanisms.get("keys", []))}')
-print(f'Mechanisms doors: {len(parsed_maze.mechanisms.get("doors", []))}')
-print(parsed_maze.to_ascii(add_boundary_walls=True, include_mechanisms=True))
-print(f'Action space: {env.action_space}')
-print('Legend: S=start, G=goal, K=key, D=door')
+print(f'Loaded maze: {maze_json_path}', flush=True)
+print(f'Task ID: {parsed_maze.task_id}', flush=True)
+print(f'Dimensions (W,H): ({parsed_maze.width}, {parsed_maze.height})', flush=True)
+print(f'Mechanisms keys: {len(parsed_maze.mechanisms.get("keys", []))}', flush=True)
+print(f'Mechanisms doors: {len(parsed_maze.mechanisms.get("doors", []))}', flush=True)
+print(parsed_maze.to_ascii(add_boundary_walls=True, include_mechanisms=True), flush=True)
+print(f'Action space: {env.action_space}', flush=True)
+print('Legend: S=start, G=goal, K=key, D=door', flush=True)
 
 # Render the pointymaze env.
 # Disable Matplotlib default keymaps so game controls are not intercepted
@@ -45,14 +45,14 @@ fig, ax = plt.subplots(figsize=(6, 6))
 img_artist = None
 status_artist = None
 
-print('Keyboard controls:')
-print('  No key pressed: pause (do not step)')
-print('  Drive: Left/Right=delta heading, Up/Down=delta forward')
-print('  Interact: P=pickup, I=open/use')
-print('  Reset: R')
-print('  Quit: Q or Esc')
+print('Keyboard controls:', flush=True)
+print('  No key pressed: pause (do not step)', flush=True)
+print('  Drive: Left/Right=delta heading, Up/Down=delta forward', flush=True)
+print('  Interact: P=pickup, I=open/use', flush=True)
+print('  Reset: R', flush=True)
+print('  Quit: Q or Esc', flush=True)
 
-episode_max_steps = 300
+episode_max_steps = 1000
 
 pressed_keys = set()
 quit_requested = False

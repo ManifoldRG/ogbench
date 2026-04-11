@@ -25,17 +25,18 @@
   "mechanisms": {
     "keys": [
       {
-        "id": "key_red",
+        "id": "kR",
         "position": [3, 3],
         "color": "red"
       }
     ],
     "doors": [
       {
-        "id": "door_red",
+        "id": "DR",
         "position": [4, 5],
         "color": "red",
-        "requires_key": "key_red"
+        "requires_key": "red",
+        "initial_state": "locked"
       }
     ],
     "switches": [],

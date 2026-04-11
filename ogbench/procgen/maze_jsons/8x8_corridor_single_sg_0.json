@@ -1,9 +1,9 @@
 {
-  "task_id": "8x8_corridor_sg_kd_0",
+  "task_id": "8x8_corridor_single_key_0",
   "version": "1.0",
   "seed": 0,
-  "difficulty_tier": 4,
-  "description": "8x8 corridor with turns, switch-gate, and key-door mechanism chain.",
+  "difficulty_tier": 3,
+  "description": "8x8 corridor with turns and a key-door mechanism.",
   "maze": {
     "dimensions": [
       8,
@@ -24,25 +24,14 @@
   },
   "mechanisms": {
     "keys": [
-      {
-        "id": "kR",
-        "position": [1, 3],
-        "color": "red"
-      }
     ],
     "doors": [
-      {
-        "id": "DR",
-        "position": [3, 6],
-        "color": "red",
-        "requires_key": "red",
-        "initial_state": "locked"
-      }
+      
     ],
     "switches": [
       {
         "id": "s1",
-        "position": [5, 1],
+        "position": [3, 3],
         "controls": [
           "g1"
         ],
@@ -54,7 +43,7 @@
     "gates": [
       {
         "id": "g1",
-        "position": [5, 3],
+        "position": [4, 5],
         "color": "black",
         "initial_state": "closed"
       }
@@ -79,7 +68,7 @@
     "auxiliary_conditions": []
   },
   "metadata": {
-    "chain_pattern": "switch_gate_then_key_door",
+    "chain_pattern": "key_door",
     "tiling": "square",
     "wall_topology": "winding"
   },
