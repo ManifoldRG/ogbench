@@ -1,3 +1,9 @@
+**Maze Action Space**
+![8x8 corridor example](ogbench/procgen/keyboard_8x8_corridor_kr_0.mp4)
+* no mechanisms: Box(-1.0, 1.0, (2,), float32)
+  * ← → to change heading, up to go forward, down to back
+* with mechanisms: Tuple(Box(-1.0, 1.0, (2,), float32), Discrete(3))
+  *  P to pick key, I to interact with switch and door
 **Maze Generation Pipeline**
 
 1. Come up with one navigation base maze per base maze type with Claude. Manually verify that there is one path from start to goal.
