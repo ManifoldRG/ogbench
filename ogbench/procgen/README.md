@@ -1,5 +1,5 @@
 **Maze Action Space**
-![8x8 corridor example](ogbench/procgen/keyboard_8x8_corridor_kr_0.mp4)
+![8x8 corridor example](keyboard_8x8_corridor_kr_0.gif)
 * no mechanisms: Box(-1.0, 1.0, (2,), float32)
   * ← → to change heading, up to go forward, down to back
 * with mechanisms: Tuple(Box(-1.0, 1.0, (2,), float32), Discrete(3))
@@ -14,7 +14,7 @@
 ![8x8 corridor kr sg example](maze_image/8x8_corridor_kr_sg_0.png)
 ![8x8 corridor sg kr example](maze_image/8x8_corridor_sg_kr_0.png)
 ![8x8 corridor kr kb example](maze_image/8x8_corridor_kr_kb_0.png)
-1. To generate more batches of mazes, repeat the above steps.
+4. To generate more batches of mazes, repeat the above steps.
 
 **Naming Convention**
 
