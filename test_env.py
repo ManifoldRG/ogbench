@@ -10,7 +10,7 @@ from ogbench.procgen.maze_json_interface import make_pointymaze_env_from_json
 
 # Specify the maze JSON file to visualize.
 # Default: single_key example. You can override via first CLI arg.
-default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '14x14_corridor_sg_kd_0.json'
+default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '14x14_dense_maze_single_kd_0.json'
 maze_json_path = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else default_json
 
 # Build a pointymaze environment directly from the JSON maze.
@@ -29,6 +29,10 @@ print(f'Task ID: {parsed_maze.task_id}', flush=True)
 print(f'Dimensions (W,H): ({parsed_maze.width}, {parsed_maze.height})', flush=True)
 print(f'Mechanisms keys: {len(parsed_maze.mechanisms.get("keys", []))}', flush=True)
 print(f'Mechanisms doors: {len(parsed_maze.mechanisms.get("doors", []))}', flush=True)
+for key_obj in parsed_maze.mechanisms.get('keys', []):
+	print(f'Key {key_obj.get("id", "?")} at {key_obj.get("position", "?")}', flush=True)
+for door_obj in parsed_maze.mechanisms.get('doors', []):
+	print(f'Door {door_obj.get("id", "?")} at {door_obj.get("position", "?")}', flush=True)
 print(parsed_maze.to_ascii(add_boundary_walls=True, include_mechanisms=True), flush=True)
 print(f'Action space: {env.action_space}', flush=True)
 print('Legend: S=start, G=goal, K=key, D=door', flush=True)
