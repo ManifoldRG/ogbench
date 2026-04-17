@@ -10,7 +10,7 @@ from ogbench.procgen.maze_json_interface import make_pointymaze_env_from_json
 
 # Specify the maze JSON file to visualize.
 # Default: single_key example. You can override via first CLI arg.
-default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '8x8_empty_room_1.json'
+default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '14x14_corridor_sg_1.json'
 maze_json_path = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else default_json
 
 # Build a pointymaze environment directly from the JSON maze.
@@ -48,6 +48,7 @@ plt.ion()
 fig, ax = plt.subplots(figsize=(6, 6))
 img_artist = None
 status_artist = None
+cursor_pos_artist = None
 
 print('Keyboard controls:', flush=True)
 print('  No key pressed: pause (do not step)', flush=True)
@@ -92,6 +93,26 @@ def on_key_release(event):
 def on_focus_lost(_event):
 	# Key release events may be missed when focus changes; clear latched movement keys.
 	pressed_keys.clear()
+
+
+def on_mouse_move(event):
+	if cursor_pos_artist is None:
+		return
+	if event.inaxes != ax or event.xdata is None or event.ydata is None or img_artist is None:
+		cursor_pos_artist.set_text('')
+		return
+
+	frame_h, frame_w = img_artist.get_array().shape[:2]
+	x_px = float(np.clip(event.xdata, 0, max(frame_w - 1, 0)))
+	y_px = float(np.clip(event.ydata, 0, max(frame_h - 1, 0)))
+
+	# Map pixel-space cursor location to discrete maze cell coordinates.
+	maze_x = int(np.floor((x_px / max(frame_w, 1)) * parsed_maze.width))
+	maze_y = int(np.floor((y_px / max(frame_h, 1)) * parsed_maze.height))
+	maze_x = int(np.clip(maze_x, 0, parsed_maze.width - 1))
+	maze_y = int(np.clip(maze_y, 0, parsed_maze.height - 1))
+
+	cursor_pos_artist.set_text(f'cursor: [{maze_x}, {maze_y}]')
 
 
 def get_keyboard_action(action_space):
@@ -152,6 +173,7 @@ press_cid = fig.canvas.mpl_connect('key_press_event', on_key_press)
 release_cid = fig.canvas.mpl_connect('key_release_event', on_key_release)
 leave_cid = fig.canvas.mpl_connect('figure_leave_event', on_focus_lost)
 close_cid = fig.canvas.mpl_connect('close_event', on_focus_lost)
+motion_cid = fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
 
 ob, info = env.reset(options=dict(task_id=1, render_goal=True))
 steps = 0
@@ -181,6 +203,17 @@ try:
 				fontsize=12,
 				color='white',
 				bbox=dict(facecolor='crimson', alpha=0.85, edgecolor='none', pad=4),
+			)
+			cursor_pos_artist = ax.text(
+				0.98,
+				0.02,
+				'',
+				transform=ax.transAxes,
+				va='bottom',
+				ha='right',
+				fontsize=11,
+				color='white',
+				bbox=dict(facecolor='black', alpha=0.65, edgecolor='none', pad=3),
 			)
 		else:
 			img_artist.set_data(frame)
@@ -258,6 +291,7 @@ finally:
 	fig.canvas.mpl_disconnect(release_cid)
 	fig.canvas.mpl_disconnect(leave_cid)
 	fig.canvas.mpl_disconnect(close_cid)
+	fig.canvas.mpl_disconnect(motion_cid)
 	env.close()
 	plt.tight_layout()
 	plt.show()
