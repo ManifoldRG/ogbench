@@ -41,7 +41,7 @@
       },
       {
         "id": "kB",
-        "position": [5, 9],
+        "position": [1, 11],
         "color": "blue"
       }
     ],
@@ -55,7 +55,7 @@
       },
       {
         "id": "DB",
-        "position": [11, 11],
+        "position": [7, 10],
         "color": "blue",
         "requires_key": "blue",
         "initial_state": "locked"

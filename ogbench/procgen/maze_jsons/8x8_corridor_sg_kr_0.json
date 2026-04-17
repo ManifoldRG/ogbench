@@ -42,7 +42,7 @@
     "switches": [
       {
         "id": "s1",
-        "position": [5, 1],
+        "position": [3, 1],
         "controls": [
           "g1"
         ],
@@ -54,7 +54,7 @@
     "gates": [
       {
         "id": "g1",
-        "position": [5, 3],
+        "position": [3, 3],
         "color": "black",
         "initial_state": "closed"
       }

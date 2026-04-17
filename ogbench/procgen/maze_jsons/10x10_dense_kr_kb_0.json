@@ -50,7 +50,7 @@
       },
       {
         "id": "DB",
-        "position": [5, 2],
+        "position": [7, 5],
         "color": "blue",
         "requires_key": "blue",
         "initial_state": "locked"
