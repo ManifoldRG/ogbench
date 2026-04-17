@@ -1,22 +1,24 @@
 {
-  "task_id": "8x8_empty_room_1",
+  "task_id": "8x8_corridor_1",
   "version": "1.0",
   "seed": 0,
-  "difficulty_tier": 1,
-  "description": "8x8 empty room with implicit perimeter walls.",
+  "difficulty_tier": 2,
+  "description": "8x8 corridor with turns and a vertical layout.",
   "maze": {
     "dimensions": [
       8,
       8
     ],
     "walls": [
+      [2, 1], [2, 2], [2, 3], [2, 4], [2, 5],
+      [4, 2], [4, 3], [4, 4], [4, 5], [4, 6]
     ],
     "start": [
       1,
       1
     ],
     "goal": [
-      4,
+      6,
       6
     ]
   },
@@ -36,7 +38,7 @@
   "goal": {
     "type": "reach_position",
     "target": [
-      4,
+      6,
       6
     ],
     "auxiliary_conditions": []
@@ -44,7 +46,7 @@
   "metadata": {
     "chain_pattern": "none",
     "tiling": "square",
-    "wall_topology": "open"
+    "wall_topology": "winding"
   },
   "max_steps": 100
 }
