@@ -1,46 +1,53 @@
 {
-  "task_id": "10x10_dense_maze_single_kd_0",
+  "task_id": "8x8_corridor_kr_kb_0",
   "version": "1.0",
   "seed": 0,
   "difficulty_tier": 4,
-  "description": "10x10 dense maze with dead ends and a single key-door mechanism.",
+  "description": "8x8 corridor with turns and two key-door pairs in sequence: red then blue.",
   "maze": {
     "dimensions": [
-      10,
-      10
+      8,
+      8
     ],
     "walls": [
-      [2, 1], [8, 1],
-      [2, 2], [3, 2], [4, 2], [6, 2], [7, 2], [8, 2],
-      [4, 3], [8, 3],
-      [1, 4], [2, 4], [4, 4], [6, 4], [8, 4],
-      [2, 5], [4, 5], [6, 5], [8, 5],
-      [2, 6], [4, 6], [5, 6], [6, 6], [8, 6],
-      [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8], [7, 8]
+      [1, 2], [2, 2], [3, 2], [4, 2], [5, 2],
+      [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]
     ],
     "start": [
       1,
       1
     ],
     "goal": [
-      7,
-      1
+      6,
+      6
     ]
   },
   "mechanisms": {
     "keys": [
       {
         "id": "kR",
-        "position": [1, 5],
+        "position": [3, 1],
         "color": "red"
+      },
+      {
+        "id": "kB",
+        "position": [1, 5],
+        "color": "blue"
       }
     ],
     "doors": [
       {
         "id": "DR",
-        "position": [4, 7],
+        "position": [3, 3],
         "color": "red",
         "requires_key": "red",
+        "initial_state": "locked"
+      },
+      {
+        "id": "DB",
+        "position": [6, 3],
+        "color": "blue",
+        "requires_key": "blue",
         "initial_state": "locked"
       }
     ],
@@ -60,15 +67,15 @@
   "goal": {
     "type": "reach_position",
     "target": [
-      7,
-      1
+      6,
+      6
     ],
     "auxiliary_conditions": []
   },
   "metadata": {
-    "chain_pattern": "single_key_door",
+    "chain_pattern": "kk",
     "tiling": "square",
-    "wall_topology": "dense_dead_ends"
+    "wall_topology": "winding"
   },
   "max_steps": 100
 }

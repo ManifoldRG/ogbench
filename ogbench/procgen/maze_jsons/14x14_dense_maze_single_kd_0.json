@@ -36,14 +36,14 @@
     "keys": [
       {
         "id": "kR",
-        "position": [3, 1],
+        "position": [5, 5],
         "color": "red"
       }
     ],
     "doors": [
       {
         "id": "DR",
-        "position": [7, 7],
+        "position": [1, 7],
         "color": "red",
         "requires_key": "red",
         "initial_state": "locked"

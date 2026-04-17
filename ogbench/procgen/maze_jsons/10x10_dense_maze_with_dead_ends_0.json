@@ -23,8 +23,8 @@
       1
     ],
     "goal": [
-      8,
-      8
+      7,
+      1
     ]
   },
   "mechanisms": {
@@ -46,8 +46,8 @@
   "goal": {
     "type": "reach_position",
     "target": [
-      8,
-      8
+      7,
+      1
     ],
     "auxiliary_conditions": []
   },

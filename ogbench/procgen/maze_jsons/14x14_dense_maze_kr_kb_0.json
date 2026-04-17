@@ -1,9 +1,9 @@
 {
-  "task_id": "14x14_dense_maze_kd_sg_0",
+  "task_id": "14x14_dense_maze_kr_kb_0",
   "version": "1.0",
   "seed": 0,
   "difficulty_tier": 6,
-  "description": "14x14 dense maze with dead ends, key-door, and switch-gate mechanism chain.",
+  "description": "14x14 dense maze with dead ends and two key-door pairs in sequence: red then blue.",
   "maze": {
     "dimensions": [
       14,
@@ -38,6 +38,11 @@
         "id": "kR",
         "position": [5, 5],
         "color": "red"
+      },
+      {
+        "id": "kB",
+        "position": [5, 9],
+        "color": "blue"
       }
     ],
     "doors": [
@@ -47,28 +52,17 @@
         "color": "red",
         "requires_key": "red",
         "initial_state": "locked"
-      }
-    ],
-    "switches": [
+      },
       {
-        "id": "s1",
-        "position": [1, 11],
-        "controls": [
-          "g1"
-        ],
-        "color": "yellow",
-        "switch_type": "toggle",
-        "initial_state": "off"
+        "id": "DB",
+        "position": [11, 11],
+        "color": "blue",
+        "requires_key": "blue",
+        "initial_state": "locked"
       }
     ],
-    "gates": [
-      {
-        "id": "g1",
-        "position": [7, 10],
-        "color": "black",
-        "initial_state": "closed"
-      }
-    ],
+    "switches": [],
+    "gates": [],
     "blocks": [],
     "teleporters": [],
     "hazards": []
@@ -89,7 +83,7 @@
     "auxiliary_conditions": []
   },
   "metadata": {
-    "chain_pattern": "key_door_then_switch_gate",
+    "chain_pattern": "kk",
     "tiling": "square",
     "wall_topology": "dense_dead_ends"
   },
