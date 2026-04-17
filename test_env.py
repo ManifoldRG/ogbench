@@ -10,7 +10,7 @@ from ogbench.procgen.maze_json_interface import make_pointymaze_env_from_json
 
 # Specify the maze JSON file to visualize.
 # Default: single_key example. You can override via first CLI arg.
-default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '14x14_dense_maze_single_kd_0.json'
+default_json = Path(__file__).parent / 'ogbench' / 'procgen' / 'maze_jsons' / '8x8_empty_room_1.json'
 maze_json_path = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else default_json
 
 # Build a pointymaze environment directly from the JSON maze.

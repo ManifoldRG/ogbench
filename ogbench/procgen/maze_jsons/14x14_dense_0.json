@@ -1,5 +1,5 @@
 {
-  "task_id": "14x14_dense_maze_with_dead_ends",
+  "task_id": "14x14_dense_0",
   "version": "1.0",
   "seed": 0,
   "difficulty_tier": 6,
@@ -36,10 +36,7 @@
     "keys": [],
     "doors": [],
     "switches": [],
-    "gates": [],
-    "blocks": [],
-    "teleporters": [],
-    "hazards": []
+    "gates": []
   },
   "rules": {
     "key_consumption": true,

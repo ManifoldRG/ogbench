@@ -1,5 +1,5 @@
 {
-  "task_id": "8x8_single_key",
+  "task_id": "single_key",
   "version": "2.0",
   "seed": 104,
   "difficulty_tier": 2,
@@ -55,10 +55,7 @@
       }
     ],
     "switches": [],
-    "gates": [],
-    "blocks": [],
-    "teleporters": [],
-    "hazards": []
+    "gates": []
   },
   "rules": {
     "key_consumption": true,

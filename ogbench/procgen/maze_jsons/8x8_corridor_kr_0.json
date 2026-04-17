@@ -1,5 +1,5 @@
 {
-  "task_id": "8x8_corridor_single_key_0",
+  "task_id": "8x8_corridor_kr_0",
   "version": "1.0",
   "seed": 0,
   "difficulty_tier": 3,
@@ -40,10 +40,7 @@
       }
     ],
     "switches": [],
-    "gates": [],
-    "blocks": [],
-    "teleporters": [],
-    "hazards": []
+    "gates": []
   },
   "rules": {
     "key_consumption": true,

@@ -56,10 +56,7 @@
       }
     ],
     "switches": [],
-    "gates": [],
-    "blocks": [],
-    "teleporters": [],
-    "hazards": []
+    "gates": []
   },
   "rules": {
     "key_consumption": true,

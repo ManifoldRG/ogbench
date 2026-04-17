@@ -24,10 +24,7 @@
     "keys": [],
     "doors": [],
     "switches": [],
-    "gates": [],
-    "blocks": [],
-    "teleporters": [],
-    "hazards": []
+    "gates": []
   },
   "rules": {
     "key_consumption": true,
@@ -39,8 +36,8 @@
   "goal": {
     "type": "reach_position",
     "target": [
-      4,
-      4
+      6,
+      6
     ],
     "auxiliary_conditions": []
   },

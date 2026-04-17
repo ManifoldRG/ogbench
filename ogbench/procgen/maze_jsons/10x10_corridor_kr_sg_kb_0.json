@@ -71,10 +71,7 @@
         "color": "black",
         "initial_state": "closed"
       }
-    ],
-    "blocks": [],
-    "teleporters": [],
-    "hazards": []
+    ]
   },
   "rules": {
     "key_consumption": true,
