@@ -17,7 +17,7 @@
 
    ![8x8 corridor kr sg kb example](maze_image/8x8_corridor_kr_sg_kb_0.png)
 
-3. Make the shorter chain variants by taking away two mechanism locations. For example, the blue door is at [5, 5], the blue key is at [4, 5]. Take away these two locations and put the remaining two mechanisms in the remaining locations.
+3. Make the shorter chain variants by taking away mechanism locations from the back. For example, in the red key door → switch gate → blue key door chain, the blue door is at [5, 5], the blue key is at [4, 5]. Take away these two locations and put the remaining two mechanisms in the remaining locations. Then take away the middle mechanism's locations and put the remaining one mechanism in the remaining locations. 
 
    ![8x8 corridor kr sg example](maze_image/8x8_corridor_kr_sg_0.png)
 
@@ -33,7 +33,7 @@
 * corridor = “winding corridor”
 * sg = “switch gate”
 * kr = red key followed by a red door
-* kb =blue key followed by a blue door
+* kb = blue key followed by a blue door
 * {sizexsize}_{base_maze_type}_{mechanisms}_{maze_type#}.json
   * example: 8x8_empty_room_0.json, 10x10_corridor_kr_1.json, 14x14_dense_kr_sg_kb_0.json
 
