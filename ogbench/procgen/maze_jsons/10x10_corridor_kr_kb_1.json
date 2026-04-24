@@ -1,9 +1,9 @@
 {
-  "task_id": "10x10_corridor_1",
+  "task_id": "10x10_corridor_kr_kb_1",
   "version": "1.0",
   "seed": 0,
   "difficulty_tier": 3,
-  "description": "10x10 corridor with turns and a vertical layout.",
+  "description": "10x10 corridor with turns and two key-door pairs in sequence: red then blue.",
   "maze": {
     "dimensions": [
       10,
@@ -24,8 +24,34 @@
     ]
   },
   "mechanisms": {
-    "keys": [],
-    "doors": [],
+    "keys": [
+      {
+        "id": "kR",
+        "position": [1, 3],
+        "color": "red"
+      },
+      {
+        "id": "kB",
+        "position": [3, 5],
+        "color": "blue"
+      }
+    ],
+    "doors": [
+      {
+        "id": "DR",
+        "position": [1, 7],
+        "color": "red",
+        "requires_key": "red",
+        "initial_state": "locked"
+      },
+      {
+        "id": "DB",
+        "position": [5, 4],
+        "color": "blue",
+        "requires_key": "blue",
+        "initial_state": "locked"
+      }
+    ],
     "switches": [],
     "gates": []
   },
@@ -45,7 +71,7 @@
     "auxiliary_conditions": []
   },
   "metadata": {
-    "chain_pattern": "none",
+    "chain_pattern": "kk",
     "tiling": "square",
     "wall_topology": "winding"
   },
