@@ -162,8 +162,8 @@
       {
         "id": "g1",
         "position": [
-          6,
-          2
+          2,
+          6
         ],
         "color": "black",
         "initial_state": "closed"
