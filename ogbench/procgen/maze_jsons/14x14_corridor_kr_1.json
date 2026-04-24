@@ -289,7 +289,7 @@
       {
         "id": "kR",
         "position": [
-          3,
+          1,
           1
         ],
         "color": "red"
@@ -299,8 +299,8 @@
       {
         "id": "DR",
         "position": [
-          11,
-          7
+          3,
+          11
         ],
         "color": "red",
         "requires_key": "red",

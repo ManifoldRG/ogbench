@@ -291,7 +291,7 @@
       {
         "id": "s1",
         "position": [
-          3,
+          1,
           1
         ],
         "controls": [
@@ -306,8 +306,8 @@
       {
         "id": "g1",
         "position": [
-          11,
-          7
+          3,
+          11
         ],
         "color": "black",
         "initial_state": "closed"
