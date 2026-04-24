@@ -340,8 +340,11 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 door_material = f'door_{color}_material'
                 if asset.find(f".//material[@name='{door_material}']") is None:
                     ET.SubElement(asset, 'material', name=door_material, rgba=self._rgba_for_color(color, alpha=1.0))
-            if len(self._switch_items) > 0 and asset.find(".//material[@name='switch_yellow_material']") is None:
-                ET.SubElement(asset, 'material', name='switch_yellow_material', rgba=self._rgba_for_color('yellow', alpha=1.0))
+            switch_colors = {item['color'] for item in self._switch_items}
+            for color in sorted(switch_colors):
+                switch_material = f'switch_{color}_material'
+                if asset.find(f".//material[@name='{switch_material}']") is None:
+                    ET.SubElement(asset, 'material', name=switch_material, rgba=self._rgba_for_color(color, alpha=1.0))
             if len(self._gate_items) > 0 and asset.find(".//material[@name='gate_black_material']") is None:
                 ET.SubElement(asset, 'material', name='gate_black_material', rgba=self._rgba_for_color('black', alpha=1.0))
 
@@ -408,7 +411,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     # Keep switch as a thin floor region so the agent can pass over it.
                     size=f'{0.22 * self._maze_unit} {0.01 * self._maze_unit}',
                     pos=f'{x} {y} {0.01 * self._maze_unit}',
-                    material='switch_yellow_material',
+                    material=f"switch_{item['color']}_material",
                     contype='0',
                     conaffinity='0',
                 )
@@ -1112,6 +1115,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 controls = list(dict.fromkeys(controls))
                 switch_type = str(switch.get('switch_type', default_switch_type)).lower()
                 initial_state = str(switch.get('initial_state', 'off')).lower()
+                color = self._normalize_color_name(switch.get('color', 'yellow'))
                 is_on = initial_state in {'on', 'true', '1'}
                 self._switch_items.append(
                     dict(
@@ -1120,6 +1124,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                         xy=self.ij_to_xy((i, j)),
                         controls=controls,
                         switch_type=switch_type,
+                        color=color,
                         is_on=is_on,
                         initial_is_on=is_on,
                         geom_name=f'json_switch_{idx}_{self._sanitize_name(switch_id)}',
@@ -1180,10 +1185,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                 geom_id = item['geom_id']
                 if geom_id is None:
                     continue
-                if item['is_on']:
-                    self.model.geom_rgba[geom_id, :4] = np.array([1.0, 0.95, 0.35, 1.0])
-                else:
-                    self.model.geom_rgba[geom_id, :4] = np.array([0.70, 0.62, 0.10, 1.0])
+                self.model.geom_rgba[geom_id, :4] = self._switch_rgba(item)
 
             for gate in self._gate_items:
                 gate['opened'] = bool(gate.get('initial_opened', False))
@@ -1320,10 +1322,7 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
                     events['toggled_switch_ids'].append(item['id'])
                     geom_id = item['geom_id']
                     if geom_id is not None:
-                        if item['is_on']:
-                            self.model.geom_rgba[geom_id, :4] = np.array([1.0, 0.95, 0.35, 1.0])
-                        else:
-                            self.model.geom_rgba[geom_id, :4] = np.array([0.70, 0.62, 0.10, 1.0])
+                        self.model.geom_rgba[geom_id, :4] = self._switch_rgba(item)
 
             # Gate state follows switch states.
             prev_gate_open = {g['id']: bool(g['opened']) for g in self._gate_items}
@@ -1404,6 +1403,15 @@ def make_maze_env(loco_env_type, maze_env_type, *args, **kwargs):
             color_name = self._normalize_color_name(color_name)
             r, g, b = palette[color_name]
             return f'{r:.3f} {g:.3f} {b:.3f} {float(alpha):.3f}'
+
+        def _rgba_array_for_color(self, color_name, alpha=1.0, brightness=1.0):
+            rgba = np.array([float(v) for v in self._rgba_for_color(color_name, alpha=alpha).split()], dtype=np.float32)
+            rgba[:3] = np.clip(rgba[:3] * float(brightness), 0.0, 1.0)
+            return rgba
+
+        def _switch_rgba(self, item):
+            brightness = 1.0 if item.get('is_on', False) else 0.72
+            return self._rgba_array_for_color(item.get('color', 'yellow'), alpha=1.0, brightness=brightness)
 
         def _compute_door_geometry(self, i, j):
             """Infer a wall-attached closed door shape and its slide direction."""
