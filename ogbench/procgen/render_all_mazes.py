@@ -58,7 +58,7 @@ def main() -> int:
     parser.add_argument(
         '--output-dir',
         type=Path,
-        default=Path('ogbench/procgen/maze_image'),
+        default=Path('ogbench/procgen/maze_images'),
         help='Directory where PNG images will be saved.',
     )
     parser.add_argument(
