@@ -323,8 +323,8 @@
       {
         "id": "DR",
         "position": [
-          10,
-          11
+          6,
+          8
         ],
         "color": "red",
         "requires_key": "red",

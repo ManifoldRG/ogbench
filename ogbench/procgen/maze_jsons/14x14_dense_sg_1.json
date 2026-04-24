@@ -330,8 +330,8 @@
       {
         "id": "g1",
         "position": [
-          10,
-          11
+          6,
+          8
         ],
         "color": "black",
         "initial_state": "closed"
