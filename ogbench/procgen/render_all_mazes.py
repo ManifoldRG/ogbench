@@ -85,14 +85,16 @@ def main() -> int:
     output_dir = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    maze_files = sorted(input_dir.glob('*.json'))
+    maze_files = sorted(input_dir.rglob('*.json'))
     if not maze_files:
         print(f'No JSON files found in: {input_dir}')
         return 1
 
     failures: list[tuple[Path, str]] = []
     for json_path in maze_files:
-        output_path = output_dir / f'{json_path.stem}.png'
+        relative_path = json_path.relative_to(input_dir)
+        output_path = output_dir / relative_path.with_suffix('.png')
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             render_maze_json(
                 json_path,
@@ -101,16 +103,16 @@ def main() -> int:
                 args.height,
                 args.warmup_frames,
             )
-            print(f'OK: {json_path.name} -> {output_path.name}')
+            print(f'OK: {relative_path} -> {output_path.relative_to(output_dir)}')
         except Exception as exc:  # noqa: BLE001
             failures.append((json_path, str(exc)))
-            print(f'FAIL: {json_path.name} ({exc})')
+            print(f'FAIL: {relative_path} ({exc})')
 
     print(f'Rendered {len(maze_files) - len(failures)}/{len(maze_files)} mazes to {output_dir}')
     if failures:
         print('Failed files:')
         for path, err in failures:
-            print(f'  - {path.name}: {err}')
+            print(f'  - {path.relative_to(input_dir)}: {err}')
         return 1
 
     return 0
