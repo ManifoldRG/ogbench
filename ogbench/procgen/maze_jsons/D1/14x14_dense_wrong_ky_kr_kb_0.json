@@ -292,8 +292,8 @@
       1
     ],
     "goal": [
-      12,
-      12
+      5,
+      1
     ]
   },
   "mechanisms": {
@@ -317,8 +317,8 @@
       {
         "id": "kB",
         "position": [
-          1,
-          11
+          5,
+          9
         ],
         "color": "blue"
       }
@@ -337,8 +337,8 @@
       {
         "id": "DB",
         "position": [
-          7,
-          10
+          11,
+          8
         ],
         "color": "blue",
         "requires_key": "blue",
@@ -358,8 +358,8 @@
   "goal": {
     "type": "reach_position",
     "target": [
-      12,
-      12
+      5,
+      1
     ],
     "auxiliary_conditions": []
   },
@@ -368,5 +368,5 @@
     "tiling": "square",
     "wall_topology": "dense_dead_ends"
   },
-  "max_steps": 200
+  "max_steps": 1000
 }

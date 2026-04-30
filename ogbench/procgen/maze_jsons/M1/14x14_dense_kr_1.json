@@ -354,5 +354,5 @@
     "tiling": "square",
     "wall_topology": "dense_dead_ends"
   },
-  "max_steps": 200
+  "max_steps": 1000
 }

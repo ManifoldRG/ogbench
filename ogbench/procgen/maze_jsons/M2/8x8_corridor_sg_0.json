@@ -10,8 +10,46 @@
       8
     ],
     "walls": [
-      [1, 2], [2, 2], [3, 2], [4, 2], [5, 2],
-      [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        5,
+        2
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        4
+      ],
+      [
+        6,
+        4
+      ]
     ],
     "start": [
       1,
@@ -23,15 +61,15 @@
     ]
   },
   "mechanisms": {
-    "keys": [
-    ],
-    "doors": [
-      
-    ],
+    "keys": [],
+    "doors": [],
     "switches": [
       {
         "id": "s1",
-        "position": [3, 1],
+        "position": [
+          3,
+          1
+        ],
         "controls": [
           "g1"
         ],
@@ -43,7 +81,10 @@
     "gates": [
       {
         "id": "g1",
-        "position": [3, 3],
+        "position": [
+          3,
+          3
+        ],
         "color": "black",
         "initial_state": "closed"
       }
@@ -69,5 +110,5 @@
     "tiling": "square",
     "wall_topology": "winding"
   },
-  "max_steps": 100
+  "max_steps": 1000
 }

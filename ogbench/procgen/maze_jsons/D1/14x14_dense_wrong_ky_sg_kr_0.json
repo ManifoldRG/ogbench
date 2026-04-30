@@ -292,8 +292,8 @@
       1
     ],
     "goal": [
-      12,
-      12
+      5,
+      1
     ]
   },
   "mechanisms": {
@@ -364,8 +364,8 @@
   "goal": {
     "type": "reach_position",
     "target": [
-      12,
-      12
+      5,
+      1
     ],
     "auxiliary_conditions": []
   },
@@ -374,5 +374,5 @@
     "tiling": "square",
     "wall_topology": "dense"
   },
-  "max_steps": 200
+  "max_steps": 1000
 }

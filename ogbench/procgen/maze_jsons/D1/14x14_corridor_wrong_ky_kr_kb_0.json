@@ -305,7 +305,7 @@
       {
         "id": "kB",
         "position": [
-          10,
+          5,
           9
         ],
         "color": "blue"
@@ -325,8 +325,8 @@
       {
         "id": "DB",
         "position": [
-          7,
-          11
+          11,
+          8
         ],
         "color": "blue",
         "requires_key": "blue",
@@ -356,5 +356,5 @@
     "tiling": "square",
     "wall_topology": "winding"
   },
-  "max_steps": 200
+  "max_steps": 1000
 }

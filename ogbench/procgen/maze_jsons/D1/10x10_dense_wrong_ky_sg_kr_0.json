@@ -222,5 +222,5 @@
     "tiling": "square",
     "wall_topology": "dense"
   },
-  "max_steps": 100
+  "max_steps": 1000
 }
