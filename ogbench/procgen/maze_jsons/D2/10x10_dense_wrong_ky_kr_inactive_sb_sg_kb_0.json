@@ -5,189 +5,48 @@
   "difficulty_tier": 4,
   "description": "10x10 dense maze with a distractor yellow key, dead ends and a red key-door, switch-gate, then blue key-door chain. Includes an inactive blue switch distractor that does not control any gate.",
   "maze": {
-    "dimensions": [
-      10,
-      10
-    ],
+    "dimensions": [10, 10],
     "walls": [
-      [
-        2,
-        1
-      ],
-      [
-        8,
-        1
-      ],
-      [
-        2,
-        2
-      ],
-      [
-        3,
-        2
-      ],
-      [
-        4,
-        2
-      ],
-      [
-        6,
-        2
-      ],
-      [
-        7,
-        2
-      ],
-      [
-        8,
-        2
-      ],
-      [
-        4,
-        3
-      ],
-      [
-        8,
-        3
-      ],
-      [
-        1,
-        4
-      ],
-      [
-        2,
-        4
-      ],
-      [
-        4,
-        4
-      ],
-      [
-        6,
-        4
-      ],
-      [
-        8,
-        4
-      ],
-      [
-        2,
-        5
-      ],
-      [
-        4,
-        5
-      ],
-      [
-        6,
-        5
-      ],
-      [
-        8,
-        5
-      ],
-      [
-        2,
-        6
-      ],
-      [
-        4,
-        6
-      ],
-      [
-        5,
-        6
-      ],
-      [
-        6,
-        6
-      ],
-      [
-        8,
-        6
-      ],
-      [
-        1,
-        8
-      ],
-      [
-        2,
-        8
-      ],
-      [
-        3,
-        8
-      ],
-      [
-        4,
-        8
-      ],
-      [
-        5,
-        8
-      ],
-      [
-        6,
-        8
-      ],
-      [
-        7,
-        8
-      ]
+      [2, 1], [8, 1],
+      [2, 2], [3, 2], [4, 2], [6, 2], [7, 2], [8, 2],
+      [4, 3], [8, 3],
+      [1, 4], [2, 4], [4, 4], [6, 4], [8, 4],
+      [2, 5], [4, 5], [6, 5], [8, 5],
+      [2, 6], [4, 6], [5, 6], [6, 6], [8, 6],
+      [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8], [7, 8]
     ],
-    "start": [
-      1,
-      1
-    ],
-    "goal": [
-      7,
-      1
-    ]
+    "start": [1, 1],
+    "goal": [7, 1]
   },
   "mechanisms": {
     "keys": [
       {
         "id": "kY",
-        "position": [
-          8,
-          7
-        ],
+        "position": [8, 7],
         "color": "yellow"
       },
       {
         "id": "kR",
-        "position": [
-          1,
-          5
-        ],
+        "position": [1, 5],
         "color": "red"
       },
       {
         "id": "kB",
-        "position": [
-          5,
-          5
-        ],
+        "position": [5, 5],
         "color": "blue"
       }
     ],
     "doors": [
       {
         "id": "DR",
-        "position": [
-          4,
-          7
-        ],
+        "position": [4, 7],
         "color": "red",
         "requires_key": "red",
         "initial_state": "locked"
       },
       {
         "id": "DB",
-        "position": [
-          5,
-          2
-        ],
+        "position": [5, 2],
         "color": "blue",
         "requires_key": "blue",
         "initial_state": "locked"
@@ -196,23 +55,15 @@
     "switches": [
       {
         "id": "s1",
-        "position": [
-          8,
-          8
-        ],
-        "controls": [
-          "g1"
-        ],
+        "position": [8, 8],
+        "controls": ["g1"],
         "color": "yellow",
         "switch_type": "toggle",
         "initial_state": "off"
       },
       {
         "id": "inactive_sb",
-        "position": [
-          7,
-          7
-        ],
+        "position": [7, 7],
         "controls": [],
         "color": "blue",
         "switch_type": "toggle",
@@ -222,10 +73,7 @@
     "gates": [
       {
         "id": "g1",
-        "position": [
-          7,
-          5
-        ],
+        "position": [7, 5],
         "color": "black",
         "initial_state": "closed"
       }
@@ -240,10 +88,7 @@
   },
   "goal": {
     "type": "reach_position",
-    "target": [
-      7,
-      1
-    ],
+    "target": [7, 1],
     "auxiliary_conditions": []
   },
   "metadata": {

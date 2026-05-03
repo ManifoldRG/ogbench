@@ -5,19 +5,10 @@
   "difficulty_tier": 1,
   "description": "8x8 empty room with implicit perimeter walls.",
   "maze": {
-    "dimensions": [
-      8,
-      8
-    ],
+    "dimensions": [8, 8],
     "walls": [],
-    "start": [
-      1,
-      1
-    ],
-    "goal": [
-      6,
-      6
-    ]
+    "start": [1, 1],
+    "goal": [6, 6]
   },
   "mechanisms": {
     "keys": [],
@@ -34,10 +25,7 @@
   },
   "goal": {
     "type": "reach_position",
-    "target": [
-      6,
-      6
-    ],
+    "target": [6, 6],
     "auxiliary_conditions": []
   },
   "metadata": {

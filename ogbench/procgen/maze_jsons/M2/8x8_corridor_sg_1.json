@@ -5,60 +5,17 @@
   "difficulty_tier": 3,
   "description": "8x8 corridor with turns and a key-door mechanism.",
   "maze": {
-    "dimensions": [
-      8,
-      8
-    ],
+    "dimensions": [8, 8],
     "walls": [
-      [
-        2,
-        1
-      ],
-      [
-        2,
-        2
-      ],
-      [
-        2,
-        3
-      ],
-      [
-        2,
-        4
-      ],
-      [
-        2,
-        5
-      ],
-      [
-        4,
-        2
-      ],
-      [
-        4,
-        3
-      ],
-      [
-        4,
-        4
-      ],
-      [
-        4,
-        5
-      ],
-      [
-        4,
-        6
-      ]
+      [2, 1], [6, 1],
+      [2, 2], [4, 2], [6, 2],
+      [2, 3], [4, 3], [6, 3],
+      [2, 4], [4, 4], [6, 4],
+      [2, 5], [4, 5], [6, 5],
+      [4, 6]
     ],
-    "start": [
-      1,
-      1
-    ],
-    "goal": [
-      6,
-      6
-    ]
+    "start": [1, 1],
+    "goal": [6, 6]
   },
   "mechanisms": {
     "keys": [],
@@ -66,13 +23,8 @@
     "switches": [
       {
         "id": "s1",
-        "position": [
-          1,
-          3
-        ],
-        "controls": [
-          "g1"
-        ],
+        "position": [1, 3],
+        "controls": ["g1"],
         "color": "yellow",
         "switch_type": "toggle",
         "initial_state": "off"
@@ -81,10 +33,7 @@
     "gates": [
       {
         "id": "g1",
-        "position": [
-          2,
-          6
-        ],
+        "position": [2, 6],
         "color": "black",
         "initial_state": "closed"
       }
@@ -99,10 +48,7 @@
   },
   "goal": {
     "type": "reach_position",
-    "target": [
-      6,
-      6
-    ],
+    "target": [6, 6],
     "auxiliary_conditions": []
   },
   "metadata": {
