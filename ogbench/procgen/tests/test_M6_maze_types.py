@@ -96,9 +96,11 @@ class TestM6MazeTypes(unittest.TestCase):
 		cls.specs = _load_m6_specs()
 
 	def test_expected_number_of_variants(self):
+		"""Tests that M6 contains the expected number of maze variants."""
 		self.assertEqual(len(self.specs), 10)
 
 	def test_naming_scheme(self):
+		"""Tests that each M6 filename matches its dimensions and kr-sg-kb chain."""
 		for file_name, spec in self.specs:
 			with self.subTest(file_name=file_name):
 				size, structure_type, mechanisms, variant = _parse_m6_name(file_name)
@@ -110,6 +112,7 @@ class TestM6MazeTypes(unittest.TestCase):
 				self.assertIn(variant, {'0', '1'})
 
 	def test_path_to_goal_exists(self):
+		"""Tests that each M6 maze has at least one walkable path to the goal."""
 		for file_name, spec in self.specs:
 			with self.subTest(file_name=file_name):
 				start = tuple(spec['maze']['start'])
@@ -121,6 +124,7 @@ class TestM6MazeTypes(unittest.TestCase):
 				)
 
 	def test_mechanism_chain_order_on_path_to_goal(self):
+		"""Tests that M6 chain waypoints are reachable in filename order."""
 		for file_name, spec in self.specs:
 			with self.subTest(file_name=file_name):
 				positions = _mechanism_positions(spec)
@@ -136,6 +140,7 @@ class TestM6MazeTypes(unittest.TestCase):
 					)
 
 	def test_mechanism_pairs_follow_filename_order(self):
+		"""Tests that M6 mechanism pairs expand to adjacent ordered waypoints."""
 		for file_name, spec in self.specs:
 			with self.subTest(file_name=file_name):
 				positions = _mechanism_positions(spec)
