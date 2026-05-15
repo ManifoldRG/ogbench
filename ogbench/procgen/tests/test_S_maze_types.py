@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 
-from BFS_solver import find_all_paths
+from BFS_solver import solve
 
 
 MAZE_JSON_DIR = Path(__file__).resolve().parents[1] / 'maze_jsons'
@@ -80,12 +80,15 @@ class SimpleMazeAssertions:
 				self.assertEqual(spec['difficulty_tier'], self.expected_difficulty_tier)
 				self.assertEqual(spec['metadata']['wall_topology'], self.expected_wall_topology)
 
-	@unittest.skip(':TODO add BFS solver uniqueness check')
-	def test_bfs_solver_finds_one_and_only_one_path_to_goal(self):
-		"""TODO: verify each simple maze has exactly one path from start to goal."""
+	def test_bfs_solver_finds_path_to_goal(self):
+		"""Tests that each simple maze is solvable by the BFS solver."""
 		for spec in self.specs:
 			with self.subTest(task_id=spec['task_id']):
-				self.assertEqual(len(find_all_paths(spec)), 1)
+				result = solve(spec)
+				self.assertTrue(result['is_solvable'])
+				self.assertEqual(result['path'][0], tuple(spec['maze']['start']))
+				self.assertEqual(result['path'][-1], tuple(spec['maze']['goal']))
+				self.assertEqual(result['optimal_cost'], len(result['path']) - 1)
 
 
 class TestS1DSMazes(SimpleMazeAssertions, unittest.TestCase):
