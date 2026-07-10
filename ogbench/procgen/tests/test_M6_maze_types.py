@@ -4,7 +4,7 @@ from collections import deque
 from pathlib import Path
 
 
-MAZE_JSON_DIR = Path(__file__).resolve().parents[1] / 'maze_jsons'
+MAZE_JSON_DIR = Path(__file__).resolve().parents[4] / 'mazes' / 'exp_maze_jsons'
 
 MECHANISM_CHAIN = {
 	'kr': ('kR', 'DR'),
