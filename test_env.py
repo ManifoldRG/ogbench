@@ -14,7 +14,7 @@ default_json = Path(__file__).resolve().parents[1] / 'mazes' / 'exp_maze_jsons' 
 maze_json_path = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else default_json
 
 # Build a pointymaze environment directly from the JSON maze.
-env, parsed_maze = make_pointymaze_env_from_json(
+env, parsed_maze, _start_ij, _goal_ij = make_pointymaze_env_from_json(
 	maze_json_path,
 	json_origin='top_left',
 	render_mode='rgb_array',

@@ -28,7 +28,7 @@ def render_maze_json(
     warmup_frames: int,
 ) -> None:
     maze_unit = _compute_maze_unit(json_path)
-    env, _ = make_pointymaze_env_from_json(
+    env, _, _, _ = make_pointymaze_env_from_json(
         json_path,
         json_origin='top_left',
         maze_unit=maze_unit,

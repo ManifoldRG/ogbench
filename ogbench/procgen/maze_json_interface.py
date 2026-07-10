@@ -185,8 +185,8 @@ def generate_maze_grid(payload: Mapping[str, Any], add_boundary_walls: bool = Tr
 	return parse_maze_json(payload).to_wall_grid(add_boundary_walls=add_boundary_walls)
 
 
-def make_pointymaze_env_from_json(
-	path: str | Path,
+def make_pointymaze_env_from_payload(
+	payload: Mapping[str, Any],
 	*,
 	json_origin: str = 'top_left',
 	maze_unit: float = 1.4,
@@ -198,19 +198,25 @@ def make_pointymaze_env_from_json(
 	add_noise_to_goal: bool = False,
 	terminate_at_goal: bool = True,
 ):
-	"""Create a custom pointy maze env from a JSON maze file.
+	"""Create a custom pointy maze env from an in-memory maze JSON payload.
 
-	The JSON ``maze.start`` and ``maze.goal`` are used as the default task.
+	The payload's ``maze.start``/``maze.goal`` are used as the default task.
 
 	Args:
-		path: Path to maze JSON.
+		payload: Parsed maze JSON (dict), e.g. from ``json.load`` or
+			``TaskSpecification.to_dict()``.
 		json_origin: Coordinate convention used by JSON positions. One of
 			``'top_left'`` or ``'bottom_left'``.
+
+	Returns:
+		``(env, parsed, start_ij, goal_ij)`` — ``start_ij``/``goal_ij`` are the
+		locomaze-frame ``(i, j)`` cells the env was built with, exposed so
+		callers can e.g. snap the agent back to an exact cell after ``reset()``.
 	"""
 	if json_origin not in {'top_left', 'bottom_left'}:
 		raise ValueError("json_origin must be either 'top_left' or 'bottom_left'.")
 
-	parsed = parse_maze_json_file(path)
+	parsed = parse_maze_json(payload)
 	maze_map = parsed.to_wall_grid(add_boundary_walls=True)
 	mechanisms = _convert_mechanisms_for_origin(parsed.mechanisms, parsed.height, json_origin)
 	if json_origin == 'top_left':
@@ -244,7 +250,41 @@ def make_pointymaze_env_from_json(
 		width=width,
 		height=height,
 	)
-	return env, parsed
+	return env, parsed, start_ij, goal_ij
+
+
+def make_pointymaze_env_from_json(
+	path: str | Path,
+	*,
+	json_origin: str = 'top_left',
+	maze_unit: float = 1.4,
+	maze_height: float = 0.5,
+	render_mode: str = 'rgb_array',
+	width: int = 512,
+	height: int = 512,
+	ob_type: str = 'states',
+	add_noise_to_goal: bool = False,
+	terminate_at_goal: bool = True,
+):
+	"""Create a custom pointy maze env from a JSON maze file.
+
+	Thin wrapper around :func:`make_pointymaze_env_from_payload` — loads the
+	file and delegates. See that function for details and the return shape.
+	"""
+	with Path(path).open('r', encoding='utf-8') as f:
+		payload = json.load(f)
+	return make_pointymaze_env_from_payload(
+		payload,
+		json_origin=json_origin,
+		maze_unit=maze_unit,
+		maze_height=maze_height,
+		render_mode=render_mode,
+		width=width,
+		height=height,
+		ob_type=ob_type,
+		add_noise_to_goal=add_noise_to_goal,
+		terminate_at_goal=terminate_at_goal,
+	)
 
 
 def _convert_mechanisms_for_origin(
