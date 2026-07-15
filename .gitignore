@@ -24,6 +24,8 @@ env/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.vscode/
+ogbench/procgen/maze_images/
 
 # Secrets / local config
 .env
