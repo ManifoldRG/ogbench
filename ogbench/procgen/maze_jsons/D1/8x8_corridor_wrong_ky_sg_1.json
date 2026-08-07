@@ -2,7 +2,7 @@
   "task_id": "8x8_corridor_wrong_ky_sg_1",
   "version": "1.0",
   "seed": 0,
-  "difficulty_tier": 4,
+  "difficulty_tier": 3,
   "description": "8x8 corridor with a distractor yellow key and switch-gate mechanism.",
   "maze": {
     "dimensions": [8, 8],
