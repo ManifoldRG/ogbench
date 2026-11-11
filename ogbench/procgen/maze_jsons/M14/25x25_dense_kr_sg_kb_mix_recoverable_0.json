@@ -1,5 +1,5 @@
 {
-  "task_id": "M14_mix_recoverable",
+  "task_id": "25x25_dense_kr_sg_kb_mix_recoverable_0",
   "version": "2.0",
   "seed": 2,
   "difficulty_tier": 7,
@@ -969,8 +969,8 @@
       {
         "id": "kP",
         "position": [
-          14,
-          15
+          9,
+          9
         ],
         "color": "pink"
       }
@@ -999,8 +999,8 @@
       {
         "id": "DP",
         "position": [
-          15,
-          15
+          9,
+          10
         ],
         "color": "pink",
         "requires_key": "pink",
@@ -1182,7 +1182,7 @@
     "hidden_mechanisms": [],
     "observability": "full",
     "view_size": 7,
-    "shut_after": 62,
+    "shut_after": 72,
     "door_shut_after": 22
   },
   "goal": {

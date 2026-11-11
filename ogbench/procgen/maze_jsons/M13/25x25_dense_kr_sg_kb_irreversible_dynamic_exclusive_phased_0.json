@@ -1,9 +1,9 @@
 {
-  "task_id": "M13_irreversible_dynamic_exclusive_phased_drop",
+  "task_id": "25x25_dense_kr_sg_kb_irreversible_dynamic_exclusive_phased_0",
   "version": "2.0",
   "seed": 2,
   "difficulty_tier": 7,
-  "description": "M11 plus irreversible_exclusive_key, dynamic_phased, planning_drop.",
+  "description": "M11 plus irreversible_exclusive_key, dynamic_phased.",
   "maze": {
     "dimensions": [
       25,
@@ -969,14 +969,6 @@
           3
         ],
         "color": "blue"
-      },
-      {
-        "id": "kP",
-        "position": [
-          7,
-          7
-        ],
-        "color": "pink"
       }
     ],
     "doors": [
@@ -1008,16 +1000,6 @@
         ],
         "color": "blue",
         "requires_key": "blue",
-        "initial_state": "locked"
-      },
-      {
-        "id": "DP",
-        "position": [
-          9,
-          7
-        ],
-        "color": "pink",
-        "requires_key": "pink",
         "initial_state": "locked"
       }
     ],
@@ -1183,11 +1165,10 @@
     "chain_pattern": "kr_sg_kb",
     "backbone": "dense_maze",
     "phased_shortcuts": [],
-    "factor": "irreversible_dynamic_exclusive_phased_drop",
+    "factor": "irreversible_dynamic_exclusive_phased",
     "factors": [
       "irreversible_exclusive_key",
-      "dynamic_phased",
-      "planning_drop"
+      "dynamic_phased"
     ]
   },
   "max_steps": 1000
