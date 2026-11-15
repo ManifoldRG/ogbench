@@ -1007,6 +1007,19 @@
     ],
     "switches": [
       {
+        "id": "s0",
+        "position": [
+          2,
+          1
+        ],
+        "controls": [
+          "g0"
+        ],
+        "color": "darkgreen",
+        "switch_type": "toggle",
+        "initial_state": "off"
+      },
+      {
         "id": "s1",
         "position": [
           11,
@@ -1023,12 +1036,21 @@
     ],
     "gates": [
       {
+        "id": "g0",
+        "position": [
+          6,
+          1
+        ],
+        "color": "darkgreen",
+        "initial_state": "closed"
+      },
+      {
         "id": "g1",
         "position": [
           19,
           2
         ],
-        "color": "black",
+        "color": "yellow",
         "initial_state": "closed"
       },
       {
@@ -1037,7 +1059,7 @@
           7,
           21
         ],
-        "color": "black",
+        "color": "yellow",
         "initial_state": "open"
       }
     ],
@@ -1100,7 +1122,7 @@
     "rotating_initial_directions": [
       0,
       3,
-      2,
+      3,
       1,
       0,
       3

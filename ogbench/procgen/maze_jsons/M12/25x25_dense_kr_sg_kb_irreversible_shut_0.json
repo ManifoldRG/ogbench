@@ -3,7 +3,7 @@
   "version": "2.0",
   "seed": 2,
   "difficulty_tier": 7,
-  "description": "M11 plus shut. The blue key sits at (15,5) in a corridor whose only way in is the red door at (8,5). A door you open shuts for good 22 actions later, so you must open the red door, fetch the blue key and come back through it in time. The switch turns off for good 59 actions after it is turned on, and its gate closes with it.",
+  "description": "M11 plus shut. The blue key sits at (15,5) in a corridor whose only way in is the red door at (8,5). A door you open shuts for good 22 actions later, so you must open the red door, fetch the blue key and come back through it in time. The switch turns off for good 65 actions after it is turned on, and its gate closes with it.",
   "maze": {
     "dimensions": [
       25,
@@ -1015,6 +1015,19 @@
     ],
     "switches": [
       {
+        "id": "s0",
+        "position": [
+          2,
+          1
+        ],
+        "controls": [
+          "g0"
+        ],
+        "color": "darkgreen",
+        "switch_type": "toggle",
+        "initial_state": "off"
+      },
+      {
         "id": "s1",
         "position": [
           11,
@@ -1030,12 +1043,21 @@
     ],
     "gates": [
       {
+        "id": "g0",
+        "position": [
+          6,
+          1
+        ],
+        "color": "darkgreen",
+        "initial_state": "closed"
+      },
+      {
         "id": "g1",
         "position": [
           9,
           11
         ],
-        "color": "black",
+        "color": "yellow",
         "initial_state": "closed"
       }
     ],
@@ -1098,7 +1120,7 @@
     "rotating_initial_directions": [
       0,
       3,
-      2,
+      3,
       1,
       0,
       3
@@ -1127,7 +1149,7 @@
     "hidden_mechanisms": [],
     "observability": "full",
     "view_size": 7,
-    "shut_after": 59,
+    "shut_after": 65,
     "door_shut_after": 22
   },
   "goal": {
